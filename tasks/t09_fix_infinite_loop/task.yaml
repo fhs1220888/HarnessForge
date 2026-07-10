@@ -1,0 +1,7 @@
+prompt: |
+  parse_pairs in parser.py hangs on some inputs (the test suite has a timeout).
+  Find the infinite loop, fix it, and make the tests pass. Do not modify the tests.
+setup: "pip install -q pytest pytest-timeout"
+check: "cd /workspace && python -m pytest tests/ -q --timeout=10"
+tags: [bugfix, python, infinite-loop]
+timeout_s: 240

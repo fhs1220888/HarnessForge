@@ -1,0 +1,6 @@
+prompt: |
+  The workspace root is cluttered. Move all .log files into a logs/ directory
+  and all .csv files into data/. Do not move or modify any other files.
+check: "cd /workspace && bash check.sh"
+tags: [shell, file-ops]
+timeout_s: 120

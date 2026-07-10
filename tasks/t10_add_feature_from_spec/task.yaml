@@ -1,0 +1,7 @@
+prompt: |
+  Read SPEC.md and implement the `slugify` function in textutils.py according
+  to the spec. All tests must pass. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [implement, python, spec-reading]
+timeout_s: 180

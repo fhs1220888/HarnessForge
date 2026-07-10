@@ -1,0 +1,8 @@
+prompt: |
+  paths.py is functionally correct but far too slow — the test suite enforces a
+  timeout. Optimize count_paths so all tests (correctness AND speed) pass.
+  Do not modify the tests.
+setup: "pip install -q pytest pytest-timeout"
+check: "cd /workspace && python -m pytest tests/ -q --timeout=20"
+tags: [performance, python, optimization]
+timeout_s: 300

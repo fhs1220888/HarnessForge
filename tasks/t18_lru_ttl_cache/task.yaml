@@ -1,0 +1,7 @@
+prompt: |
+  Implement TTLCache in cache.py according to SPEC.md. Pay close attention to
+  the interaction between TTL expiry and LRU eviction. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [implement, python, data-structure, spec-compliance]
+timeout_s: 300

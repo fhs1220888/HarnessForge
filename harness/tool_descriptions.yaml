@@ -1,0 +1,54 @@
+# EVOLVABLE COMPONENT — edits to this file go through the self-harness validation gate.
+# These descriptions are what the model sees. Tool *implementations* live in
+# src/harnessforge/agent/tools.py and are fixed in v1.
+
+tools:
+  - name: bash
+    description: >
+      Run a shell command in the task sandbox. Returns stdout, stderr, and exit code.
+      Output is truncated to max_output_chars (see loop_policy).
+    input_schema:
+      type: object
+      properties:
+        command: { type: string, description: "Shell command to run" }
+        timeout_s: { type: integer, description: "Timeout in seconds", default: 60 }
+      required: [command]
+
+  - name: read_file
+    description: >
+      Read a file. Returns content with line numbers. Use offset/limit for large files.
+    input_schema:
+      type: object
+      properties:
+        path: { type: string }
+        offset: { type: integer, default: 0 }
+        limit: { type: integer, default: 500 }
+      required: [path]
+
+  - name: write_file
+    description: Create or overwrite a file with the given content.
+    input_schema:
+      type: object
+      properties:
+        path: { type: string }
+        content: { type: string }
+      required: [path, content]
+
+  - name: apply_patch
+    description: >
+      Apply a unified diff to the workspace. Fails atomically: if any hunk does not
+      apply, nothing is changed. Prefer this over write_file for edits to existing files.
+    input_schema:
+      type: object
+      properties:
+        patch: { type: string, description: "Unified diff" }
+      required: [patch]
+
+  - name: finish
+    description: End the task. Call only after running the tests.
+    input_schema:
+      type: object
+      properties:
+        status: { type: string, enum: [done, gave_up] }
+        summary: { type: string }
+      required: [status, summary]

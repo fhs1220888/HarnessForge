@@ -1,0 +1,7 @@
+prompt: |
+  The inventory tests fail. There is more than one bug, and fixing the first
+  will reveal the next — keep going until ALL tests pass. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, multi-bug, chained]
+timeout_s: 300

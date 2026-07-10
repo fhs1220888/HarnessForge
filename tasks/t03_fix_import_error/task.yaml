@@ -1,0 +1,8 @@
+prompt: |
+  Running `python -m pytest tests/ -q` fails with an import error. Read the
+  traceback carefully, fix the problem, and make the tests pass. Do not modify
+  the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, traceback-reading]
+timeout_s: 180

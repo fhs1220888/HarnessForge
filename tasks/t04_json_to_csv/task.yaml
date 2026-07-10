@@ -1,0 +1,7 @@
+prompt: |
+  Write a script convert.py that reads users.json and writes active_users.csv
+  containing only users with "active": true, with header "name,email", sorted
+  by name ascending. Run it to produce the CSV.
+check: "cd /workspace && python convert.py && diff <(cat active_users.csv) expected.csv"
+tags: [implement, python, cli, data]
+timeout_s: 180

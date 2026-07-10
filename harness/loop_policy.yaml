@@ -1,0 +1,29 @@
+# EVOLVABLE COMPONENT — edits to this file go through the self-harness validation gate.
+# Fixed runtime code reads these values; the self-harness loop may tune them.
+
+limits:
+  # Deliberately tight budget: the experiment measures how much capability the
+  # harness preserves under constraint. Proposals may NOT raise these limits
+  # (enforced in selfharness/proposal.py).
+  max_steps: 8                 # hard cap on agent loop iterations per task
+  max_tokens_per_task: 150000  # abort task when cumulative tokens exceed this
+  max_cost_usd_per_task: 0.25  # abort task when cumulative cost exceeds this
+  tool_timeout_s: 60
+  max_output_chars: 8000       # truncate tool output beyond this
+
+retries:
+  llm_api: { max_attempts: 3, backoff_s: 5 }   # transient API errors
+  tool_error_reprompt: true    # feed tool errors back to the model instead of aborting
+
+testing:
+  run_tests_before_finish: true   # reject `finish(done)` if tests were never run
+  on_test_failure: "show_full_traceback"  # what to inject after a failing test run
+
+context:
+  compaction_trigger_tokens: 120000  # compact history when context exceeds this
+  keep_last_n_tool_results: 5        # always keep the most recent N tool results verbatim
+  compaction_strategy: "summarize_older_steps"  # fixed strategies live in context.py
+
+termination:
+  consecutive_identical_actions: 3   # abort if the agent repeats the same action N times
+  consecutive_tool_errors: 5         # abort after N tool errors in a row

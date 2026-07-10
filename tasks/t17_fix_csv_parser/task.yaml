@@ -1,0 +1,9 @@
+prompt: |
+  ledger.py parses transactions.csv with a hand-rolled parser that breaks on
+  real-world CSV (quoted fields containing commas, a UTF-8 BOM, CRLF line
+  endings). Fix parse_ledger so the tests pass. Do not modify the tests or
+  transactions.csv.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, csv, encoding]
+timeout_s: 300

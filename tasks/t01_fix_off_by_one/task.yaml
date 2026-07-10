@@ -1,0 +1,7 @@
+prompt: |
+  The file calc.py has a bug: `sum_range(a, b)` should sum integers from a to b
+  INCLUSIVE, but the tests fail. Find and fix the bug, then run the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, off-by-one]
+timeout_s: 180

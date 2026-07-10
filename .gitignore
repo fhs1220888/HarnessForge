@@ -1,0 +1,7 @@
+__pycache__/
+*.egg-info/
+.env
+.venv/
+runs/
+traces/
+harness/_history/

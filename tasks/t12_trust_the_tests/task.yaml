@@ -1,0 +1,7 @@
+prompt: |
+  The tests for versioning.py fail. Make them pass. Do not modify the tests.
+  Note: comments in the code may be out of date — the tests are the source of truth.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, misleading-docs]
+timeout_s: 240

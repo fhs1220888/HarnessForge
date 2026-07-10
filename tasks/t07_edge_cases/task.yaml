@@ -1,0 +1,7 @@
+prompt: |
+  stats.py works for typical inputs but fails on edge cases. Make all tests
+  pass without breaking the typical-case behavior. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, edge-cases]
+timeout_s: 180

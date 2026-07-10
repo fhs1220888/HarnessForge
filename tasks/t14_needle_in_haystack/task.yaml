@@ -1,0 +1,9 @@
+prompt: |
+  converters.py contains 120 auto-generated functions that must all satisfy the
+  contract conv_N(x) == N * x + N. Exactly one function violates it and the
+  file is too long to read in one go. Find it, fix it, make the tests pass.
+  Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, large-file, navigation]
+timeout_s: 300

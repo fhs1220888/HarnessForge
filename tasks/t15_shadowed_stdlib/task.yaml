@@ -1,0 +1,8 @@
+prompt: |
+  Running the tests produces a confusing error inside app.py even though app.py
+  looks correct. Diagnose the real cause and fix it. Do not modify the tests,
+  and do not rewrite app.py's logic — it is not the culprit.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, shadowing, diagnosis]
+timeout_s: 240

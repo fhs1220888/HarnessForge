@@ -1,0 +1,8 @@
+prompt: |
+  Implement the Stack class in stack.py so all tests in tests/ pass.
+  Required methods: push, pop, peek, is_empty, __len__. pop/peek on an empty
+  stack must raise IndexError.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [implement, python, data-structure]
+timeout_s: 180

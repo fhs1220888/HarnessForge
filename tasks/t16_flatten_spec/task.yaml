@@ -1,0 +1,7 @@
+prompt: |
+  Implement `flatten` in flatten.py exactly according to SPEC.md. The edge cases
+  matter — read the spec carefully. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [implement, python, spec-compliance, edge-cases]
+timeout_s: 300

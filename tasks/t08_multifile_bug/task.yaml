@@ -1,0 +1,7 @@
+prompt: |
+  The pricing tests fail. The bug involves more than one file — trace how the
+  discount is applied end to end before editing. Do not modify the tests.
+setup: "pip install -q pytest"
+check: "cd /workspace && python -m pytest tests/ -q"
+tags: [bugfix, python, multi-file]
+timeout_s: 240
