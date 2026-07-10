@@ -119,7 +119,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--baseline", type=Path, default=None)
     ap.add_argument("--regression-tasks", nargs="+", required=True)
-    ap.add_argument("--repeats", type=int, default=2)
+    ap.add_argument("--repeats", type=int, default=3)
     ap.add_argument("--max-proposals", type=int, default=5)
     ap.add_argument("--sandbox", choices=["docker", "local"], default="docker")
     args = ap.parse_args()

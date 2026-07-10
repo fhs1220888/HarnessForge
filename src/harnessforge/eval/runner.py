@@ -79,8 +79,8 @@ async def run_one(task: Task, cfg: HarnessConfig, out_dir: Path, repeat: int,
 
 async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
                     concurrency: int = 2, task_ids: list[str] | None = None,
-                    sandbox_kind: str = "docker") -> dict:
-    cfg = HarnessConfig.load()
+                    sandbox_kind: str = "docker", harness_dir: Path | None = None) -> dict:
+    cfg = HarnessConfig.load(harness_dir) if harness_dir else HarnessConfig.load()
     tasks = discover_tasks(tasks_root)
     if task_ids:
         tasks = [t for t in tasks if t.task_id in task_ids]
@@ -91,7 +91,21 @@ async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
 
     async def guarded(task: Task, r: int) -> None:
         async with sem:
-            outcomes.append(await run_one(task, cfg, out_dir, r, sandbox_kind))
+            # Infrastructure failures (network, sandbox) must not kill the suite,
+            # and must not silently masquerade as agent failures: retry the whole
+            # task once, then record an explicit api_error outcome.
+            for attempt in (1, 2):
+                try:
+                    outcomes.append(await run_one(task, cfg, out_dir, r, sandbox_kind))
+                    return
+                except Exception as e:
+                    print(f"[runner] {task.task_id} r{r} infra failure "
+                          f"(attempt {attempt}/2): {type(e).__name__}: {str(e)[:150]}",
+                          flush=True)
+            outcomes.append(TaskOutcome(
+                task_id=task.task_id, repeat=r, run_id=f"{task.task_id}-r{r}-infra-fail",
+                passed=False, exit_reason="api_error", steps=0, cost_usd=0.0,
+                tokens=0, harness_version=cfg.version, check_tail="infra failure"))
 
     await asyncio.gather(*(guarded(t, r) for t in tasks for r in range(repeats)))
 
@@ -122,9 +136,12 @@ def main() -> None:
     ap.add_argument("--concurrency", type=int, default=2)
     ap.add_argument("--task-ids", nargs="*", default=None)
     ap.add_argument("--sandbox", choices=list(SANDBOXES), default="docker")
+    ap.add_argument("--harness-dir", type=Path, default=None,
+                    help="Use an alternate harness component dir (for A/B comparisons)")
     args = ap.parse_args()
     summary = asyncio.run(run_suite(args.tasks, args.out, args.repeats,
-                                    args.concurrency, args.task_ids, args.sandbox))
+                                    args.concurrency, args.task_ids, args.sandbox,
+                                    args.harness_dir))
     print(json.dumps(summary, indent=2))
 
 

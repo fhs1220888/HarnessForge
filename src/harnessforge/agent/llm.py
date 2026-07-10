@@ -36,7 +36,7 @@ class LLMResponse:
 
 
 class LLMClient:
-    def __init__(self, model: str | None = None, max_attempts: int = 3, backoff_s: float = 5.0,
+    def __init__(self, model: str | None = None, max_attempts: int = 5, backoff_s: float = 4.0,
                  timeout_s: float = 120.0):
         self.model = model or os.environ.get("AGENT_MODEL", "claude-haiku-4-5-20251001")
         # Explicit timeout, and our own retry loop (SDK retries disabled so the
@@ -88,7 +88,10 @@ class LLMClient:
                       f"{type(e).__name__}: {str(e)[:200]}", flush=True)
                 if isinstance(e, anthropic.NotFoundError):
                     break  # unknown model — retrying won't help
-                await asyncio.sleep(self.backoff_s * (attempt + 1))
+                # Exponential backoff with jitter: flaky networks recover better
+                # when retries don't arrive in lockstep.
+                import random
+                await asyncio.sleep(self.backoff_s * (2 ** attempt) * (0.5 + random.random()))
         raise RuntimeError(
             f"LLM call failed after {self.max_attempts} attempts: "
             f"{type(last_err).__name__}: {last_err}"

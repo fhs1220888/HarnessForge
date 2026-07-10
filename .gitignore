@@ -5,3 +5,4 @@ __pycache__/
 runs/
 traces/
 harness/_history/
+harness_baseline/

@@ -114,7 +114,10 @@ async def validate(proposal: Proposal, baseline_dir: Path, regression_tasks: lis
     cost_before = max(before["total_cost_usd"], 1e-9)
     cost_delta_pct = (after["total_cost_usd"] - before["total_cost_usd"]) / cost_before * 100
 
-    accepted = targeted_delta > 0 and regression_flips == 0 and cost_delta_pct < 50
+    # Round-1 lesson: with few repeats, small positive deltas are noise. Require
+    # a substantial effect size before merging (see EXPERIMENTS.md, round 1).
+    MIN_EFFECT = 0.25
+    accepted = targeted_delta >= MIN_EFFECT and regression_flips == 0 and cost_delta_pct < 50
     if not accepted:
         _revert(backup, proposal.component)
 
