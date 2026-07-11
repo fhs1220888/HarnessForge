@@ -15,6 +15,74 @@ Budget: max 8 steps, $0.25/task · Suite: 18 tasks · Sandbox: local
 task difficulty or model choice (older weak models are retired from the API).
 The experiment measures how much capability the harness preserves under constraint.
 
+## Terminal-Bench baseline (external benchmark)
+
+`tb-subset-v1`: 20 pinned Terminal-Bench 2.0 tasks (easy/medium, expert time
+5–30 min), run in each task's prebuilt Docker image, verified by TB's own
+reward.txt. Same harness components as the native suite; only the budget is
+larger (25 steps) because TB tasks are far harder.
+
+| Run | Harness | Config | Pass rate | Cost | Notes |
+|---|---|---|---|---|---|
+| tb_baseline | f325df98 | 25 steps, 2 repeats | **0.475** (19/40) | $10.38 | 0 infra_error. Real external-benchmark number |
+
+**Dominant finding — the agent almost never stops.** 36/40 runs exhausted the
+25-step budget; only 3 called `finish`. Even *passing* tasks (cobol, extract-elf,
+pytorch-model-recovery, git-leak-recovery, …) hit max_steps: the agent completed
+the work but never recognized it was done, and kept probing with bash.
+
+Root cause is a harness/task-distribution mismatch. On the native suite the agent
+confirms success by running pytest (visible) and then finishes. On TB, verification
+is external and hidden (TB writes reward.txt via a test.sh the agent never sees),
+so the agent is never confident it is done. The `run_tests_before_finish` gate and
+the `_looks_like_test` heuristic — both tuned for the native pytest suite — misfire
+on TB. Tool usage confirms the flailing: 15–25 bash calls per run, read_file barely
+used (0–6).
+
+Two harness-level opportunities this exposes:
+1. **Pass rate:** give the agent a way to self-verify / decide it is done on
+   TB-style tasks, so it stops flailing before the budget runs out.
+2. **Cost/efficiency:** 36/40 runs burn the full 25-step budget, which is most of
+   the $10.38. A harness that lets the agent finish when done should cut cost
+   substantially at equal pass rate ("self-harness for efficiency").
+
+Per-run breakdown (final 40 scored runs): 9 tasks pass 2/2, 10 fail 0/2,
+1 flaky (vulnerable-secret 1/2).
+
+## TB finish-behavior A/B (hand-crafted intervention)
+
+Hypothesis from the baseline finding: the agent burns the full 25-step budget
+because it never recognizes completion. Treatment harness (`harness_finish_fix`):
+(1) system_prompt gains a "Recognizing completion" section — do one verification
+pass, then `finish` immediately instead of flailing; (2) loop_policy sets
+`run_tests_before_finish: false`, since TB has no agent-visible test to gate on.
+
+Control = the tb_baseline slice for the same 10 tasks (repeats 2). Treatment =
+`--harness-dir harness_finish_fix`, same 10 tasks, repeats 2.
+
+| Metric | Control | Treatment | Δ |
+|---|---|---|---|
+| Pass rate | 0.500 | 0.400 | −0.10 (95% CI **[−0.30, +0.10]**, crosses 0) |
+| `finish` / `max_steps` | 0 / 20 | 8 / 12 | agent now stops on its own |
+| Avg steps/run | 25.0 | 23.1 | −1.9 |
+| Avg cost/run | $0.196 | $0.158 | **−19%** |
+
+Per-task: 3 previously-passing tasks (cobol, extract-elf, code-from-image) fell
+2/2 → 1/2; one failing task (prove-plus-comm) gained. The intervention did exactly
+what it said — the agent finishes earlier and cheaper — but that early finishing is
+often *premature*: on TB the verification is hidden, so the agent's self-judgment of
+"done" is unreliable, and it declares victory before the work is actually complete.
+
+**Lesson:** the `run_tests_before_finish` gate I removed was load-bearing — it was
+suppressing premature completion. Budget-burning was not pure waste; it correlated
+with eventually getting there. You cannot cheaply buy efficiency by telling the
+agent to stop; you need a *reliable completion signal*, which hidden verification
+denies. A real fix must add genuine self-verification, not just permission to quit.
+
+**Calibration table, row 2:** hypothesis "help the agent finish → higher pass rate"
+· measured pass-rate Δ −0.10 (CI crosses 0) · clear −19% cost effect. Same meta-
+lesson as round 1: locally plausible harness changes must be measured, not assumed.
+
 ## Round 1 (self-harness iteration)
 
 Mining on baseline_v4 failures found 3 patterns:

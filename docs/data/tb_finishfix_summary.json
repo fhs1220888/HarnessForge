@@ -1,0 +1,57 @@
+{
+  "benchmark": "terminal-bench-2 / tb-subset",
+  "harness_version": "38af40cf3b5c",
+  "tb_max_steps": 25,
+  "n_tasks": 10,
+  "repeats": 2,
+  "n_scored": 20,
+  "n_infra_error": 0,
+  "pass_rate": 0.4,
+  "total_cost_usd": 3.17,
+  "exit_reasons": {
+    "max_steps": 12,
+    "finished_done": 8
+  },
+  "per_task": {
+    "cobol-modernization": [
+      false,
+      true
+    ],
+    "extract-elf": [
+      true,
+      false
+    ],
+    "kv-store-grpc": [
+      true,
+      true
+    ],
+    "code-from-image": [
+      true,
+      false
+    ],
+    "git-leak-recovery": [
+      true,
+      true
+    ],
+    "crack-7z-hash": [
+      false,
+      false
+    ],
+    "prove-plus-comm": [
+      true,
+      false
+    ],
+    "openssl-selfsigned-cert": [
+      false,
+      false
+    ],
+    "polyglot-c-py": [
+      false,
+      false
+    ],
+    "qemu-startup": [
+      false,
+      false
+    ]
+  }
+}

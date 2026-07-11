@@ -1,0 +1,98 @@
+{
+  "benchmark": "terminal-bench-2 / tb-subset",
+  "harness_version": "f325df98ab59",
+  "tb_max_steps": 25,
+  "n_tasks": 20,
+  "repeats": 2,
+  "n_scored": 40,
+  "n_infra_error": 0,
+  "pass_rate": 0.475,
+  "total_cost_usd": 10.38,
+  "exit_reasons": {
+    "finished_done": 3,
+    "max_steps": 36,
+    "max_tokens": 1
+  },
+  "per_task": {
+    "fix-git": [
+      true,
+      true
+    ],
+    "prove-plus-comm": [
+      false,
+      false
+    ],
+    "cobol-modernization": [
+      true,
+      true
+    ],
+    "crack-7z-hash": [
+      false,
+      false
+    ],
+    "raman-fitting": [
+      false,
+      false
+    ],
+    "mteb-leaderboard": [
+      false,
+      false
+    ],
+    "constraints-scheduling": [
+      true,
+      true
+    ],
+    "kv-store-grpc": [
+      true,
+      true
+    ],
+    "mteb-retrieve": [
+      false,
+      false
+    ],
+    "pytorch-model-recovery": [
+      true,
+      true
+    ],
+    "merge-diff-arc-agi-task": [
+      false,
+      false
+    ],
+    "nginx-request-logging": [
+      true,
+      true
+    ],
+    "openssl-selfsigned-cert": [
+      false,
+      false
+    ],
+    "polyglot-c-py": [
+      false,
+      false
+    ],
+    "vulnerable-secret": [
+      true,
+      false
+    ],
+    "hf-model-inference": [
+      false,
+      false
+    ],
+    "code-from-image": [
+      true,
+      true
+    ],
+    "extract-elf": [
+      true,
+      true
+    ],
+    "git-leak-recovery": [
+      true,
+      true
+    ],
+    "qemu-startup": [
+      false,
+      false
+    ]
+  }
+}

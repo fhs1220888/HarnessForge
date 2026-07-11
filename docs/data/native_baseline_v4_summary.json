@@ -1,0 +1,103 @@
+{
+  "harness_version": "f325df98ab59",
+  "n_tasks": 18,
+  "repeats": 3,
+  "pass_rate": 0.667,
+  "total_cost_usd": 1.25,
+  "exit_reasons": {
+    "max_steps": 40,
+    "finished_done": 14
+  },
+  "per_task": {
+    "t01_fix_off_by_one": [
+      true,
+      true,
+      true
+    ],
+    "t02_implement_stack": [
+      true,
+      true,
+      true
+    ],
+    "t03_fix_import_error": [
+      true,
+      true,
+      true
+    ],
+    "t04_json_to_csv": [
+      false,
+      false,
+      false
+    ],
+    "t05_fix_regex": [
+      true,
+      true,
+      true
+    ],
+    "t06_organize_logs": [
+      true,
+      true,
+      true
+    ],
+    "t07_edge_cases": [
+      true,
+      true,
+      true
+    ],
+    "t08_multifile_bug": [
+      false,
+      false,
+      false
+    ],
+    "t09_fix_infinite_loop": [
+      true,
+      true,
+      false
+    ],
+    "t10_add_feature_from_spec": [
+      false,
+      false,
+      false
+    ],
+    "t11_chained_bugs": [
+      false,
+      false,
+      false
+    ],
+    "t12_trust_the_tests": [
+      true,
+      true,
+      true
+    ],
+    "t13_make_it_fast": [
+      true,
+      true,
+      true
+    ],
+    "t14_needle_in_haystack": [
+      false,
+      true,
+      false
+    ],
+    "t15_shadowed_stdlib": [
+      true,
+      false,
+      true
+    ],
+    "t16_flatten_spec": [
+      true,
+      true,
+      true
+    ],
+    "t17_fix_csv_parser": [
+      false,
+      false,
+      true
+    ],
+    "t18_lru_ttl_cache": [
+      true,
+      true,
+      true
+    ]
+  }
+}

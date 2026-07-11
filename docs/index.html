@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HarnessForge — results dashboard</title>
+<style>
+  :root{--ink:#1a1a2e;--accent:#e94560;--muted:#8d99ae;--good:#2a9d8f;--warn:#e9c46a;--bg:#fafafa;--card:#fff;}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  header{padding:32px 24px 8px;max-width:1000px;margin:0 auto}
+  h1{margin:0 0 4px;font-size:24px}
+  .sub{color:var(--muted)}
+  main{max-width:1000px;margin:0 auto;padding:16px 24px 64px}
+  .card{background:var(--card);border:1px solid #eee;border-radius:10px;padding:20px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .card h2{margin:0 0 12px;font-size:17px}
+  .big{font-size:40px;font-weight:700}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:160px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #f0f0f0}
+  th{color:var(--muted);font-weight:600}
+  .bar{height:16px;border-radius:3px;background:var(--good)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600}
+  .yes{background:#e7f5f2;color:var(--good)}.no{background:#fdeaee;color:var(--accent)}
+  code{background:#f4f4f6;padding:1px 5px;border-radius:4px;font-size:13px}
+  .muted{color:var(--muted);font-size:13px}
+  .reload{float:right;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>HarnessForge <span class="sub">— results dashboard</span></h1>
+  <div class="sub">Self-evolving coding-agent harness · agent under test: <code>claude-haiku-4-5</code></div>
+</header>
+<main>
+  <div class="card">
+    <h2>Terminal-Bench subset — baseline</h2>
+    <div class="row">
+      <div class="kpi"><div class="big" id="tb-rate">–</div><div class="muted">pass rate (2 repeats)</div></div>
+      <div class="kpi"><div class="big" id="tb-maxsteps">–</div><div class="muted">runs that hit max_steps</div></div>
+      <div class="kpi"><div class="big" id="tb-cost">–</div><div class="muted">total API cost</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Per-task pass rate</h2>
+    <table><tbody id="tb-tasks"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2>Proposal calibration table</h2>
+    <p class="muted">Every harness change carries a predicted effect. After rigorous measurement the observed effect is recorded. The gap is the point: locally plausible changes are often noise.</p>
+    <table>
+      <thead><tr><th>experiment</th><th>component</th><th>hypothesis</th><th>predicted Δ</th><th>small-sample</th><th>controlled Δ</th><th>merged</th></tr></thead>
+      <tbody id="cal"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>finish-fix A/B</h2>
+    <p class="muted">Hypothesis: help the agent recognize completion → higher pass rate. Result: it finishes earlier and cheaper, but pass rate does not improve — the removed <code>run_tests_before_finish</code> gate was load-bearing.</p>
+    <table><tbody id="ab"></tbody></table>
+  </div>
+
+  <div class="muted">Static snapshot from <code>docs/data/*.json</code>. Regenerate figures with <code>python scripts/make_figures.py</code>.</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const pct = x => (x*100).toFixed(1)+'%';
+
+async function load(name){ const r = await fetch('data/'+name); return r.json(); }
+
+(async function(){
+  const tb = await load('tb_baseline_summary.json');
+  $('tb-rate').textContent = pct(tb.pass_rate);
+  $('tb-maxsteps').textContent = (tb.exit_reasons.max_steps||0)+'/'+tb.n_scored;
+  $('tb-cost').textContent = '$'+tb.total_cost_usd.toFixed(2);
+
+  const rows = Object.entries(tb.per_task)
+    .map(([k,v])=>[k, v.reduce((a,b)=>a+b,0)/v.length])
+    .sort((a,b)=>b[1]-a[1]);
+  $('tb-tasks').innerHTML = rows.map(([k,r])=>{
+    const c = r>=.75?'var(--good)':r<=.25?'var(--accent)':'var(--warn)';
+    return `<tr><td style="width:230px">${k}</td>
+      <td><div class="bar" style="width:${Math.max(r*100,2)}%;background:${c}"></div></td>
+      <td style="width:60px">${pct(r)}</td></tr>`;
+  }).join('');
+
+  const cal = await load('calibration.json');
+  $('cal').innerHTML = cal.map(c=>`<tr>
+    <td>${c.round}</td><td><code>${c.component}</code></td><td>${c.hypothesis}</td>
+    <td>${c.predicted>=0?'+':''}${c.predicted}</td>
+    <td>${c.smallval==null?'—':(c.smallval>=0?'+':'')+c.smallval}</td>
+    <td>${c.controlled>=0?'+':''}${c.controlled}</td>
+    <td><span class="pill ${c.merged?'yes':'no'}">${c.merged?'merged':'rejected'}</span></td></tr>`).join('');
+
+  const base = await load('tb_baseline_summary.json');
+  const fix = await load('tb_finishfix_summary.json');
+  $('ab').innerHTML = `
+    <tr><th>metric</th><th>control</th><th>finish-fix</th></tr>
+    <tr><td>finish / max_steps</td><td>0 / 20</td><td>8 / 12</td></tr>
+    <tr><td>pass rate (same 10 tasks)</td><td>0.500</td><td>0.400 <span class="muted">CI [−0.30,+0.10]</span></td></tr>
+    <tr><td>avg cost / run</td><td>$0.196</td><td>$0.158 <span class="pill yes">−19%</span></td></tr>`;
+})();
+</script>
+</body>
+</html>

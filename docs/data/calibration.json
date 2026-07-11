@@ -1,0 +1,20 @@
+[
+  {
+    "round": "native round 1",
+    "component": "system_prompt.md",
+    "hypothesis": "reverify after patch",
+    "predicted": 0.08,
+    "smallval": 1.0,
+    "controlled": 0.0,
+    "merged": false
+  },
+  {
+    "round": "TB finish-fix",
+    "component": "system_prompt+loop_policy",
+    "hypothesis": "finish when done -> higher pass",
+    "predicted": 0.08,
+    "smallval": null,
+    "controlled": -0.1,
+    "merged": false
+  }
+]
