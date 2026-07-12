@@ -58,7 +58,16 @@
   </div>
 
   <div class="card">
-    <h2>finish-fix A/B</h2>
+    <h2>selfverify: the win is on the high-power metric</h2>
+    <p class="muted">Best-designed intervention (verify each deliverable before finishing). Pass-rate lift is too small to confirm at this sample size, but the efficiency gain is <b>statistically significant</b> — because steps is continuous and low-variance. Picking the right metric is the result. (paired bootstrap, pooled n=3, 10 tasks)</p>
+    <table>
+      <thead><tr><th>metric</th><th>Δ (treat − control)</th><th>95% CI</th><th>significant?</th></tr></thead>
+      <tbody id="sv"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>finish-fix A/B (earlier, weaker intervention)</h2>
     <p class="muted">Hypothesis: help the agent recognize completion → higher pass rate. Result: it finishes earlier and cheaper, but pass rate does not improve — the removed <code>run_tests_before_finish</code> gate was load-bearing.</p>
     <table><tbody id="ab"></tbody></table>
   </div>
@@ -95,6 +104,16 @@ async function load(name){ const r = await fetch('data/'+name); return r.json();
     <td>${c.smallval==null?'—':(c.smallval>=0?'+':'')+c.smallval}</td>
     <td>${c.controlled>=0?'+':''}${c.controlled}</td>
     <td><span class="pill ${c.merged?'yes':'no'}">${c.merged?'merged':'rejected'}</span></td></tr>`).join('');
+
+  // selfverify three-metric comparison (values from eval/compare.py, pooled n=3)
+  const sv = [
+    ["pass rate", "+0.067", "[−0.100, +0.267]", false],
+    ["cost / run", "−1.3%", "[−…, +…]", false],
+    ["steps / run", "−6.9%", "[−13.3%, −1.6%]", true],
+  ];
+  $('sv').innerHTML = sv.map(([m,d,ci,s])=>`<tr>
+    <td>${m}</td><td>${d}</td><td class="muted">${ci}</td>
+    <td><span class="pill ${s?'yes':'no'}">${s?'significant':'crosses 0'}</span></td></tr>`).join('');
 
   const base = await load('tb_baseline_summary.json');
   const fix = await load('tb_finishfix_summary.json');

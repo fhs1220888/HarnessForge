@@ -9,7 +9,7 @@ Built to practice [harness engineering](https://martinfowler.com/articles/harnes
 making non-deterministic agent systems reliable through constraints, observability,
 and feedback loops — not prompt tricks.
 
-<!-- CI badge goes here once Actions is enabled -->
+![CI](https://github.com/fhs1220888/HarnessForge/actions/workflows/ci.yml/badge.svg)
 
 ---
 
@@ -105,8 +105,9 @@ harness/                 evolvable components (the "genome")
 src/harnessforge/
   agent/       loop, LLM client, tools, context compaction
   sandbox/     docker / local / terminal-bench sandboxes
-  eval/        task format, runner, TB adapter+runner, stats (bootstrap/Wilson)
-  selfharness/ weakness mining, proposal gen, validation gate, round driver
+  eval/        task format, runner, TB adapter+runner, select, stats, compare
+  selfharness/ mining, proposal (multi-candidate), search (memory), validation, round/campaign
+  replay.py    step-by-step trace replay CLI
   trace.py     JSONL trace schema + writer
 tasks/                   18 native tasks (bidirectionally verified)
 scripts/                 figure generation, TB image pre-pull
@@ -114,12 +115,26 @@ docs/                    figures, data snapshots, dashboard
 EXPERIMENTS.md           full experiment log + calibration table
 ```
 
+## Tooling
+
+```bash
+make report                    # lint + 36 tests + regenerate figures
+python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
+make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
+python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
+```
+
+The self-harness loop is a real search, not a single shot: it generates several
+candidate diffs per failure pattern, keeps the best per pattern, and remembers rejected
+attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
+`--rounds N` for a multi-round campaign).
+
 ## Quickstart
 
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # add ANTHROPIC_API_KEY
-pytest                          # 27 tests, mock-LLM end-to-end, no API cost
+make test                      # 36 tests, mock-LLM end-to-end, no API cost
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local

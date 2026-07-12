@@ -19,6 +19,6 @@ jobs:
       - name: Lint
         run: ruff check src tests
       - name: Test
-        # 27 tests: trace/config/task/proposal/stats/context units +
-        # mock-LLM end-to-end loop. No API key, no Docker, no cost.
+        # 36 tests: trace/config/task/proposal/stats/context/search/select/
+        # tb-adapter units + mock-LLM end-to-end loop. No API key, no Docker, no cost.
         run: pytest -q
