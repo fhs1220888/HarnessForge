@@ -161,6 +161,28 @@ The honest bottom line: naive self-harness merges noise; the fix is not a clever
 but a measurement regime — effect-size thresholds, regression guards, and enough
 statistical power to tell a real +7 pp from a lucky one.
 
+## Multi-round search machinery (built, unit-tested; full campaign deferred)
+
+The self-harness loop is a real search, not a single shot (`selfharness/search.py`,
+`proposal.py`, `round.py::run_campaign`):
+
+- **Multi-candidate:** the proposer emits several distinct diffs per failure pattern;
+  `select_best_per_group` validates them and keeps only the best per pattern.
+- **Memory:** rejected candidates and *why* they failed (noise / regression / also-ran)
+  are folded into `ProposalMemory` and injected into later prompts, so dead ends aren't
+  re-proposed across rounds.
+- **Campaign:** `run_campaign` chains rounds — each round's merged harness becomes the
+  next round's baseline — emitting a pass-rate trajectory, a per-candidate calibration
+  table, and a persisted `memory.json`.
+
+All of this is covered by unit tests (`tests/test_search.py`) and wired into the CLI
+(`--rounds N`). A full multi-round campaign on live models is deferred on cost grounds:
+per the power analysis above, the native suite has limited headroom at 8 steps and a
+2-round campaign's expected outcome is a modest/noisy trajectory rather than a new
+confirmed result — not worth the API spend for a portfolio artifact. The machinery is
+ready to run when justified; this repo prioritizes confirmed results (the −6.9% step
+reduction) over an underpowered trajectory chart.
+
 ## Round 1 (self-harness iteration)
 
 Mining on baseline_v4 failures found 3 patterns:
