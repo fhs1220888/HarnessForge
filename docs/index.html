@@ -23,6 +23,7 @@
   .bar{height:16px;border-radius:3px;background:var(--good)}
   .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600}
   .yes{background:#e7f5f2;color:var(--good)}.no{background:#fdeaee;color:var(--accent)}
+  .fixable{background:#fdf1e0;color:#c77d18}.capped{background:#eceef1;color:#6b7280}
   code{background:#f4f4f6;padding:1px 5px;border-radius:4px;font-size:13px}
   .muted{color:var(--muted);font-size:13px}
   .reload{float:right;font-size:13px;color:var(--muted)}
@@ -45,6 +46,7 @@
 
   <div class="card">
     <h2>Per-task pass rate</h2>
+    <p class="muted">Failing tasks are tagged: <span class="pill fixable">harness-fixable</span> (doable in-budget — the agent mismanaged its steps; these are what self-harness targets) vs <span class="pill capped">capability-limited</span> (needs compute the model can't deliver in 25 steps regardless of harness). Tags come from <code>eval/select.py</code>.</p>
     <table><tbody id="tb-tasks"></tbody></table>
   </div>
 
@@ -87,6 +89,17 @@ async function load(name){ const r = await fetch('data/'+name); return r.json();
   $('tb-maxsteps').textContent = (tb.exit_reasons.max_steps||0)+'/'+tb.n_scored;
   $('tb-cost').textContent = '$'+tb.total_cost_usd.toFixed(2);
 
+  // task tags mirror eval/select.py (TB_HARNESS_FIXABLE / TB_CAPABILITY_LIMITED)
+  const FIXABLE = new Set(["prove-plus-comm","crack-7z-hash","openssl-selfsigned-cert",
+    "polyglot-c-py","merge-diff-arc-agi-task","qemu-startup"]);
+  const CAPPED = new Set(["mteb-leaderboard","mteb-retrieve","hf-model-inference","raman-fitting"]);
+  const tagFor = (k, r) => {
+    if (r > 0) return "";
+    if (FIXABLE.has(k)) return `<span class="pill fixable">harness-fixable</span>`;
+    if (CAPPED.has(k)) return `<span class="pill capped">capability-limited</span>`;
+    return "";
+  };
+
   const rows = Object.entries(tb.per_task)
     .map(([k,v])=>[k, v.reduce((a,b)=>a+b,0)/v.length])
     .sort((a,b)=>b[1]-a[1]);
@@ -94,7 +107,8 @@ async function load(name){ const r = await fetch('data/'+name); return r.json();
     const c = r>=.75?'var(--good)':r<=.25?'var(--accent)':'var(--warn)';
     return `<tr><td style="width:230px">${k}</td>
       <td><div class="bar" style="width:${Math.max(r*100,2)}%;background:${c}"></div></td>
-      <td style="width:60px">${pct(r)}</td></tr>`;
+      <td style="width:60px">${pct(r)}</td>
+      <td style="width:150px">${tagFor(k,r)}</td></tr>`;
   }).join('');
 
   const cal = await load('calibration.json');
