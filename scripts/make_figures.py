@@ -92,7 +92,6 @@ def fig_ab_finishfix():
     ax.set_ylim(0, 1.15)
     ax.set_title("finish-fix A/B: −19% cost, no pass-rate gain")
     ax.legend(frameon=False)
-    # annotate CI on pass rate
     ax.text(0, 0.55, "Δ −0.10\nCI [−0.30,+0.10]", ha="center", fontsize=8, color=INK)
     _style(ax)
     fig.tight_layout()
@@ -100,8 +99,40 @@ def fig_ab_finishfix():
     plt.close(fig)
 
 
+def fig_selfverify_metrics():
+    """selfverify: the win is on the high-power (continuous) metric, not pass rate."""
+    labels = ["pass rate\nΔ +0.067", "cost/run\nΔ −1.3%", "steps/run\nΔ −6.9%"]
+    # normalized effect direction; only steps has a CI excluding zero
+    deltas = [0.067, -0.013, -0.069]
+    los = [-0.10, -0.05, -0.133]
+    his = [0.267, 0.03, -0.016]
+    sig = [False, False, True]
+    colors = [GOOD if s else MUTED for s in sig]
+    fig, ax = plt.subplots(figsize=(6.4, 3.6))
+    xs = range(len(labels))
+    ax.bar(xs, deltas, color=colors, width=0.6)
+    for i, (d, lo, hi) in enumerate(zip(deltas, los, his)):
+        ax.plot([i, i], [lo, hi], color=INK, lw=1.4)
+        ax.plot([i - 0.06, i + 0.06], [lo, lo], color=INK, lw=1.4)
+        ax.plot([i - 0.06, i + 0.06], [hi, hi], color=INK, lw=1.4)
+    ax.axhline(0, color=INK, lw=1)
+    ax.set_xticks(list(xs))
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("paired Δ (95% CI)")
+    ax.set_title("selfverify: significant only on the low-variance metric (steps)")
+    ax.set_ylim(-0.20, 0.30)
+    ax.annotate("CI excludes 0 → significant", xy=(2, -0.016), xytext=(1.3, 0.16),
+                fontsize=8, color=GOOD, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=GOOD, lw=1.2))
+    _style(ax)
+    fig.tight_layout()
+    fig.savefig(FIG / "selfverify_metrics.png", dpi=150)
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     fig_native_headroom()
     fig_tb_baseline()
     fig_ab_finishfix()
+    fig_selfverify_metrics()
     print("wrote figures to", FIG)

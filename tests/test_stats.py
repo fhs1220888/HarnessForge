@@ -1,4 +1,5 @@
 from harnessforge.eval.stats import (
+    paired_bootstrap_continuous,
     paired_bootstrap_delta,
     suite_hash,
     wilson_interval,
@@ -35,6 +36,23 @@ def test_bootstrap_noisy_small_effect_ci_crosses_zero():
     after = {"a": [True], "b": [False], "c": [True], "d": [False]}
     res = paired_bootstrap_delta(before, after, n_boot=3000, seed=2)
     assert res["ci_low"] < 0 < res["ci_high"]
+
+
+def test_continuous_clear_reduction_is_significant():
+    # every task drops from ~25 steps to ~18 -> unambiguous negative delta
+    before = {f"t{i}": [25, 24, 26] for i in range(8)}
+    after = {f"t{i}": [18, 17, 19] for i in range(8)}
+    r = paired_bootstrap_continuous(before, after, n_boot=3000, seed=1)
+    assert r["mean_delta"] < 0
+    assert r["ci_high"] < 0            # CI entirely below zero
+    assert r["pct_change"] < 0
+
+
+def test_continuous_reports_pct_change():
+    before = {"a": [10.0], "b": [10.0]}
+    after = {"a": [8.0], "b": [8.0]}
+    r = paired_bootstrap_continuous(before, after, n_boot=1000, seed=0)
+    assert r["pct_change"] == -20.0
 
 
 def test_suite_hash_order_invariant():

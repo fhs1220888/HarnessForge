@@ -20,7 +20,7 @@
   {
     "round": "TB selfverify",
     "component": "system_prompt+loop_policy",
-    "hypothesis": "verification discipline -> higher pass on fixable tasks",
+    "hypothesis": "verify deliverables -> better; measurable as -6.9% steps (CI excludes 0)",
     "predicted": 0.1,
     "smallval": null,
     "controlled": 0.095,

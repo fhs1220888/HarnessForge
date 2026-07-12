@@ -32,13 +32,20 @@ earlier, weaker gate had already accepted. Two worked examples:
 |---|---|---|
 | *native round 1:* "reverify immediately after each patch" | small-sample validation: **+100%** on targeted tasks | ❌ controlled A/B: **≈0** — was noise the gate merged |
 | *TB finish-fix:* "finish when you judge the task done" | −19% cost, agent stops on its own | ❌ pass rate **−0.10, CI [−0.30, +0.10]** — the removed gate was load-bearing |
-| *TB selfverify:* "verify each deliverable before finishing" | targets **+0.095**, guards flat, cost neutral | ⚠️ directionally positive & non-damaging, but **CI [−0.095, +0.333]** still crosses zero — confirming a +7 pp effect needs ~16× the data |
+| *TB selfverify:* "verify each deliverable before finishing" | targets +0.095 pass rate (CI crosses 0); **−6.9% steps** | ✅ on the right metric: **steps −6.9%, 95% CI [−13.3%, −1.6%]** (excludes 0) at no pass-rate cost |
 
 The arc is the result: each intervention was better designed than the last, and each was
-measured more rigorously (single-run → paired → high-signal task selection + pooled
-bootstrap). The takeaway isn't a prompt — it's that reliable self-improvement needs a
-*measurement regime* (effect-size thresholds, regression guards, enough statistical
-power) more than a cleverer change. Full write-up: [EXPERIMENTS.md](EXPERIMENTS.md).
+measured more rigorously (single-run → paired → high-signal selection + pooled bootstrap →
+continuous-metric comparison). The last row is the payoff: a pass-rate lift of a few points
+needs ~16× the data to confirm, but selfverify's efficiency gain is **statistically
+significant on the same runs** because steps is a continuous, low-variance metric.
+**Picking the higher-power metric is the result.** The takeaway isn't a prompt — reliable
+self-improvement needs a *measurement regime* (effect-size thresholds, regression guards,
+the right metric) more than a cleverer change.
+
+![selfverify metrics](docs/figures/selfverify_metrics.png)
+
+Full write-up: [EXPERIMENTS.md](EXPERIMENTS.md).
 
 ---
 

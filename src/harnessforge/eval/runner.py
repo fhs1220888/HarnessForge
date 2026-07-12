@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import tempfile
 from collections import Counter
@@ -28,6 +29,7 @@ from ..config import HarnessConfig
 from ..sandbox.docker_sandbox import Sandbox
 from ..sandbox.local_sandbox import LocalSandbox
 from ..trace import TraceWriter
+from .stats import RunManifest, suite_hash
 from .task import Task, discover_tasks
 
 SANDBOXES = {"docker": Sandbox, "local": LocalSandbox}
@@ -85,6 +87,18 @@ async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
     if task_ids:
         tasks = [t for t in tasks if t.task_id in task_ids]
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    RunManifest(
+        benchmark="native-suite",
+        harness_version=cfg.version,
+        agent_model=os.environ.get("AGENT_MODEL", "claude-haiku-4-5-20251001"),
+        miner_model=os.environ.get("MINER_MODEL", "claude-sonnet-5"),
+        suite_hash=suite_hash([t.task_id for t in tasks]),
+        task_ids=[t.task_id for t in tasks],
+        repeats=repeats, max_steps=cfg.policy("limits.max_steps", 30),
+        extra={"sandbox": sandbox_kind,
+               "harness_dir": str(harness_dir) if harness_dir else "harness/"},
+    ).write(out_dir)
 
     sem = asyncio.Semaphore(concurrency)
     outcomes: list[TaskOutcome] = []

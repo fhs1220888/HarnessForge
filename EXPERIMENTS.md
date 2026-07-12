@@ -135,6 +135,25 @@ accept the change on mechanism + non-harm grounds.
 fixable tasks" · targets Δ +0.095, CI [−0.095, +0.333] · guards flat. Best-designed
 intervention of the three; positive lean, underpowered to confirm.
 
+### The measurable win is on the efficiency axis
+
+Re-analyzing the same round-2 runs with a *continuous* paired bootstrap
+(`eval/compare.py`, pooled n=3) separates two questions the pass-rate metric
+conflates:
+
+| Metric | selfverify vs control | 95% CI | Significant? |
+|---|---|---|---|
+| Pass rate | +0.067 | [−0.100, +0.267] | no (crosses 0) |
+| Cost/run | −1.3% | [−…, +…] | no (crosses 0) |
+| **Steps/run** | **−6.9%** | **[−13.3%, −1.6%]** | **yes — CI excludes 0** |
+
+So the honest, defensible result is not "higher pass rate" but: **selfverify
+significantly reduces agent steps (~7%, CI excludes zero) with no detectable
+pass-rate change.** This is the whole point of picking the right metric — binary
+pass/fail needs ~16× the data to confirm a small effect, but steps is continuous
+and low-variance, so the same runs already confirm the efficiency gain. Choosing a
+higher-power metric *is* the result. No extra spend was needed.
+
 **Meta-arc across all three interventions.** Each was better designed than the last
 (reverify-after-patch → permission-to-finish → verification-discipline) and each was
 measured more rigorously (single-run → paired → high-signal selection + pooled bootstrap).

@@ -64,6 +64,40 @@ def paired_bootstrap_delta(before: dict[str, list[bool]], after: dict[str, list[
     }
 
 
+def paired_bootstrap_continuous(before: dict[str, list[float]], after: dict[str, list[float]],
+                                n_boot: int = 10000, seed: int = 0) -> dict[str, float]:
+    """Bootstrap the paired per-task mean delta for a CONTINUOUS metric (steps,
+    cost, latency). Continuous metrics have far lower variance than binary pass/fail,
+    so a real efficiency gain reaches significance with far less data — which is why
+    'cut cost at equal pass rate' is a more measurable claim than a pass-rate lift.
+    """
+    tasks = [t for t in before if t in after and before[t] and after[t]]
+    if not tasks:
+        return {"mean_delta": 0.0, "ci_low": 0.0, "ci_high": 0.0, "n_tasks": 0,
+                "pct_change": 0.0}
+
+    def mean(d, t):
+        return sum(d[t]) / len(d[t])
+
+    per_task = {t: mean(after, t) - mean(before, t) for t in tasks}
+    observed = sum(per_task.values()) / len(tasks)
+    base_level = sum(mean(before, t) for t in tasks) / len(tasks)
+
+    rng = random.Random(seed)
+    boots = []
+    for _ in range(n_boot):
+        sample = [per_task[rng.choice(tasks)] for _ in tasks]
+        boots.append(sum(sample) / len(sample))
+    boots.sort()
+    return {
+        "mean_delta": round(observed, 4),
+        "ci_low": round(boots[int(0.025 * n_boot)], 4),
+        "ci_high": round(boots[int(0.975 * n_boot)], 4),
+        "n_tasks": len(tasks),
+        "pct_change": round(100 * observed / base_level, 2) if base_level else 0.0,
+    }
+
+
 def suite_hash(task_ids: list[str]) -> str:
     return hashlib.sha256("\x00".join(sorted(task_ids)).encode()).hexdigest()[:12]
 

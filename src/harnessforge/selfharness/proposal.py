@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 
 from ..config import EVOLVABLE_COMPONENTS, HARNESS_DIR
-from .schema import MiningReport, Proposal
+from .schema import MiningReport, Proposal, ProposalMemory
 
 PROPOSAL_PROMPT = """\
 You are improving a coding-agent harness. Its evolvable components are:
@@ -28,13 +28,18 @@ Current content of each component is given below. A mined failure pattern:
   description: {description}
   example: {example}
 
-Propose 1-2 MINIMAL changes, each targeting exactly one component, as JSON objects:
+Previously-rejected attempts for this pattern (learn from these, do not repeat):
+{avoid}
+
+Propose {n_candidates} DISTINCT candidate changes, each targeting exactly one
+component, as JSON objects. Make them genuinely different approaches (e.g. edit a
+different component, or attack the pattern from a different angle) — not rewordings:
 {{"component": "<filename>", "diff": "<unified diff>",
   "expected_effect": "<what should improve>", "expected_pass_rate_delta": <float 0-0.2>,
   "risk": "<cost/behavior risk>"}}
 
 Rules: smallest diff that plausibly fixes the pattern; do not rewrite whole files;
-never remove safety limits; YAML must remain valid. Output a JSON array only.
+never remove or raise safety/budget limits; YAML must remain valid. Output a JSON array only.
 
 {component_contents}
 """
@@ -80,10 +85,18 @@ def sanity_check(proposal: Proposal, harness_dir: Path = HARNESS_DIR) -> str | N
     return None
 
 
-async def generate(report: MiningReport, max_proposals: int = 5,
-                   harness_dir: Path = HARNESS_DIR) -> list[Proposal]:
+async def generate(report: MiningReport, max_proposals: int = 6,
+                   harness_dir: Path = HARNESS_DIR, candidates_per_pattern: int = 3,
+                   memory: ProposalMemory | None = None) -> list[Proposal]:
+    """Generate multiple distinct candidate diffs per failure pattern.
+
+    Candidates targeting the same pattern share `candidate_group = pattern_id`, so
+    the round driver can validate several and keep only the best. Past rejections
+    (memory) are injected so the proposer avoids known dead ends.
+    """
     import json
     import os
+
     from ..agent.llm import LLMClient
 
     contents = "\n\n".join(
@@ -96,6 +109,7 @@ async def generate(report: MiningReport, max_proposals: int = 5,
     for pattern in report.patterns:
         if len(proposals) >= max_proposals:
             break
+        avoid = memory.avoid_note(pattern.pattern_id) if memory else "None yet."
         resp = await llm.complete(
             system="You are a careful harness engineer. Minimal, reversible changes only.",
             messages=[{"role": "user", "content": PROPOSAL_PROMPT.format(
@@ -103,6 +117,8 @@ async def generate(report: MiningReport, max_proposals: int = 5,
                 pattern_id=pattern.pattern_id,
                 description=pattern.description,
                 example=pattern.example_excerpt,
+                avoid=avoid,
+                n_candidates=candidates_per_pattern,
                 component_contents=contents,
             )}],
             max_tokens=8192,
@@ -115,6 +131,7 @@ async def generate(report: MiningReport, max_proposals: int = 5,
             p = Proposal(
                 proposal_id=f"prop-{uuid.uuid4().hex[:8]}",
                 failure_pattern=pattern.pattern_id,
+                candidate_group=pattern.pattern_id,
                 **item,
             )
             err = sanity_check(p, harness_dir)
