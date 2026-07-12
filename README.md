@@ -28,12 +28,17 @@ verified by TB's own reward check). Agent under test: `claude-haiku-4-5`. 25-ste
 measured, and the ones that turn out to be noise are rejected, including changes an
 earlier, weaker gate had already accepted. Two worked examples:
 
-| Intervention | Looked like | Held up under rigorous measurement? |
+| Intervention (increasingly well-designed) | Looked like | Held up under rigorous measurement? |
 |---|---|---|
-| *native round 1:* "reverify immediately after each patch" | small-sample validation: **+100%** on targeted tasks | ❌ controlled A/B: **≈0** (was noise) |
-| *TB finish-fix:* "finish when you judge the task done" | −19% cost, agent stops on its own | ❌ pass rate **−0.10, 95% CI [−0.30, +0.10]** — the removed gate was load-bearing |
+| *native round 1:* "reverify immediately after each patch" | small-sample validation: **+100%** on targeted tasks | ❌ controlled A/B: **≈0** — was noise the gate merged |
+| *TB finish-fix:* "finish when you judge the task done" | −19% cost, agent stops on its own | ❌ pass rate **−0.10, CI [−0.30, +0.10]** — the removed gate was load-bearing |
+| *TB selfverify:* "verify each deliverable before finishing" | targets **+0.095**, guards flat, cost neutral | ⚠️ directionally positive & non-damaging, but **CI [−0.095, +0.333]** still crosses zero — confirming a +7 pp effect needs ~16× the data |
 
-Full write-up with per-task data: [EXPERIMENTS.md](EXPERIMENTS.md).
+The arc is the result: each intervention was better designed than the last, and each was
+measured more rigorously (single-run → paired → high-signal task selection + pooled
+bootstrap). The takeaway isn't a prompt — it's that reliable self-improvement needs a
+*measurement regime* (effect-size thresholds, regression guards, enough statistical
+power) more than a cleverer change. Full write-up: [EXPERIMENTS.md](EXPERIMENTS.md).
 
 ---
 

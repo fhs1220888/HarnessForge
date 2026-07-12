@@ -16,5 +16,14 @@
     "smallval": null,
     "controlled": -0.1,
     "merged": false
+  },
+  {
+    "round": "TB selfverify",
+    "component": "system_prompt+loop_policy",
+    "hypothesis": "verification discipline -> higher pass on fixable tasks",
+    "predicted": 0.1,
+    "smallval": null,
+    "controlled": 0.095,
+    "merged": false
   }
 ]

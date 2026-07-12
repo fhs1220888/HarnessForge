@@ -8,4 +8,5 @@ traces/
 harness/_history/
 harness_baseline/
 harness_finish_fix/
+harness_selfverify/
 PLAN.md

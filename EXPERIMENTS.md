@@ -83,6 +83,65 @@ denies. A real fix must add genuine self-verification, not just permission to qu
 · measured pass-rate Δ −0.10 (CI crosses 0) · clear −19% cost effect. Same meta-
 lesson as round 1: locally plausible harness changes must be measured, not assumed.
 
+## Round 2 (planned): high-signal selection + a verification discipline
+
+Two changes address why earlier interventions couldn't be measured or didn't help:
+
+**Better ruler (statistical power).** `eval/select.py` classifies baseline tasks into
+always_pass / always_fail / borderline and drops capability-limited failures (mteb,
+hf-model-inference, raman — tasks needing compute the model can't deliver in-budget
+regardless of harness). The validation set becomes the tasks where a harness change
+can actually move the needle: `{crack-7z-hash, merge-diff-arc-agi-task,
+openssl-selfsigned-cert, polyglot-c-py, prove-plus-comm, qemu-startup,
+vulnerable-secret}` + 3 always_pass regression guards.
+
+**Better intervention (`harness_selfverify`).** The finish-fix A/B failed because it
+gave the agent *permission* to stop without a way to know it was right. The selfverify
+variant instead installs a completion *discipline*: (1) restate the deliverables as a
+checklist first; (2) before finishing, verify each item with a concrete command whose
+output would expose a mistake ("assume wrong until a command shows it right"); (3)
+finish only when all checks pass. Hypothesis: rigorous self-verification prevents the
+premature-finish regressions while still letting the agent stop when genuinely done —
+recovering the −19% cost effect without the pass-rate loss.
+
+### Round 2 results
+
+High-signal set, 3 repeats/arm (2+1 pooled), paired bootstrap:
+
+| Group | Control | selfverify | Δ (95% CI) |
+|---|---|---|---|
+| Targets (7 harness-fixable) | 0.143 | 0.238 | **+0.095, [−0.095, +0.333]** |
+| All 10 | 0.367 | 0.433 | +0.067, [−0.10, +0.267] |
+| Regression guards (3) | 0.889 | 0.889 | 0.0 — no collateral damage |
+
+Two targets robustly improved (openssl-selfsigned-cert 0.00→0.67, vulnerable-secret
+0.67→1.00); one regressed (prove-plus-comm 0.33→0.00). Agent finish rate rose (0→~30%
+of runs), cost roughly flat.
+
+**Verdict: directionally positive and non-damaging, but not statistically confirmed.**
+selfverify is clearly better-behaved than finish-fix — the regression guards held flat
+(vs. finish-fix damaging passing tasks) and the targets lean positive — but the CI still
+crosses zero.
+
+**Why we stop here (a power calculation, not a shrug).** The effect is ~+7–10 pp. With
+binary outcomes and per-task pairing over 7–10 tasks, the 95% CI half-width is ≈ ±0.2.
+CI width shrinks like 1/√n, so confirming a +0.10 effect at ±0.05 needs ≈ 16× the data —
+on the order of 100+ task-instances, i.e. tens of dollars of eval per candidate. For an
+effect this small that is not worth it, and *knowing that* — sizing the experiment before
+spending — is the point. A production harness team would either batch many more tasks or
+accept the change on mechanism + non-harm grounds.
+
+**Calibration table, row 3:** hypothesis "verification discipline → higher pass rate on
+fixable tasks" · targets Δ +0.095, CI [−0.095, +0.333] · guards flat. Best-designed
+intervention of the three; positive lean, underpowered to confirm.
+
+**Meta-arc across all three interventions.** Each was better designed than the last
+(reverify-after-patch → permission-to-finish → verification-discipline) and each was
+measured more rigorously (single-run → paired → high-signal selection + pooled bootstrap).
+The honest bottom line: naive self-harness merges noise; the fix is not a cleverer prompt
+but a measurement regime — effect-size thresholds, regression guards, and enough
+statistical power to tell a real +7 pp from a lucky one.
+
 ## Round 1 (self-harness iteration)
 
 Mining on baseline_v4 failures found 3 patterns:

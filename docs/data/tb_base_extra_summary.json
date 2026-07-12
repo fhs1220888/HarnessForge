@@ -1,0 +1,46 @@
+{
+  "benchmark": "terminal-bench-2 / tb-subset",
+  "harness_version": "f325df98ab59",
+  "tb_max_steps": 25,
+  "n_tasks": 10,
+  "repeats": 1,
+  "n_scored": 10,
+  "n_infra_error": 0,
+  "pass_rate": 0.4,
+  "total_cost_usd": 2.0,
+  "exit_reasons": {
+    "max_steps": 10
+  },
+  "per_task": {
+    "crack-7z-hash": [
+      false
+    ],
+    "merge-diff-arc-agi-task": [
+      false
+    ],
+    "openssl-selfsigned-cert": [
+      false
+    ],
+    "polyglot-c-py": [
+      false
+    ],
+    "prove-plus-comm": [
+      true
+    ],
+    "qemu-startup": [
+      false
+    ],
+    "vulnerable-secret": [
+      true
+    ],
+    "cobol-modernization": [
+      true
+    ],
+    "code-from-image": [
+      false
+    ],
+    "constraints-scheduling": [
+      true
+    ]
+  }
+}
