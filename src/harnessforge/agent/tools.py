@@ -66,6 +66,11 @@ class ToolExecutor:
         return ToolResult(output=res.stdout or "Patch applied.",
                           exit_code=res.exit_code, error=res.exit_code != 0)
 
+    async def _tool_memory_write(self, inp: dict[str, Any]) -> ToolResult:
+        # Handled by the loop (writes to TaskMemory, never reaches the sandbox);
+        # implemented here so the executor never sees it as unknown.
+        return ToolResult(output=f"[memory_write] {inp.get('key', '')}")
+
     async def _tool_finish(self, inp: dict[str, Any]) -> ToolResult:
         # Handled by the loop as a termination signal; implemented here so the
         # executor never sees it as unknown.

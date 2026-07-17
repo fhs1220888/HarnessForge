@@ -41,3 +41,17 @@ def test_original_not_mutated():
 
 def test_estimate_tokens_positive():
     assert estimate_tokens(_messages(3)) > 0
+
+
+def test_short_results_never_grow():
+    """Regression: the stub carries a ~200-char head + framing, so 'compacting'
+    a short tool result used to make the context BIGGER. Short results must be
+    left alone; compaction may never increase token count."""
+    msgs = [{"role": "user", "content": "task"}]
+    for i in range(6):
+        msgs.append({"role": "user", "content": [_tool_result(i, size=50)]})  # all short
+    out, before, after = compact_messages(msgs, keep_last_n=1)
+    assert after <= before
+    results = [b for m in out if isinstance(m["content"], list)
+               for b in m["content"] if b.get("type") == "tool_result"]
+    assert all(not str(r["content"]).startswith("[compacted") for r in results)

@@ -27,10 +27,20 @@ def _is_tool_result_block(block: Any) -> bool:
     return isinstance(block, dict) and block.get("type") == "tool_result"
 
 
+def _as_text(content: Any) -> str:
+    return content if isinstance(content, str) else json.dumps(content, default=str)
+
+
 def _stub(content: Any) -> str:
-    text = content if isinstance(content, str) else json.dumps(content, default=str)
+    text = _as_text(content)
     head = text[:STUB_KEEP_CHARS]
     return f"[compacted tool result, {len(text)} chars. head: {head!r}]"
+
+
+def _worth_compacting(content: Any) -> bool:
+    """A stub carries ~STUB_KEEP_CHARS of head plus framing; replacing content
+    shorter than that would *grow* the context. Skip those."""
+    return len(_as_text(content)) > STUB_KEEP_CHARS + 48
 
 
 def compact_messages(messages: list[dict[str, Any]], keep_last_n: int = 5,
@@ -62,8 +72,9 @@ def compact_messages(messages: list[dict[str, Any]], keep_last_n: int = 5,
             continue
         new_content = []
         for bi, block in enumerate(content):
-            if (mi, bi) in to_compact and not str(
-                    block.get("content", "")).startswith("[compacted"):
+            if ((mi, bi) in to_compact
+                    and not str(block.get("content", "")).startswith("[compacted")
+                    and _worth_compacting(block.get("content", ""))):
                 new_block = dict(block)
                 new_block["content"] = _stub(block.get("content", ""))
                 new_content.append(new_block)

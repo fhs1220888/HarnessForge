@@ -24,6 +24,12 @@ context:
   keep_last_n_tool_results: 5        # always keep the most recent N tool results verbatim
   compaction_strategy: "summarize_older_steps"  # fixed strategies live in context.py
 
+memory:
+  # Episode-scoped notes (agent/memory.py): stored outside message history and
+  # appended to the system prompt each turn, so compaction cannot destroy them.
+  max_notes: 20             # FIFO eviction beyond this
+  max_chars_per_note: 1000  # per-note truncation (bounds the token cost)
+
 termination:
   consecutive_identical_actions: 3   # abort if the agent repeats the same action N times
   consecutive_tool_errors: 5         # abort after N tool errors in a row

@@ -10,16 +10,16 @@ decomposition per LangChain/OpenAI/Anthropic). Honest, not aspirational:
 |---|---|---|
 | Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, run manifests, independent ground-truth verification, full self-harness eval loop |
 | Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, repeated-error termination |
-| Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (5 tools, not needed) |
+| Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (6 tools, not needed) |
 | Orchestration | basic | single loop with termination conditions; no graph/checkpoint/resume or multi-agent |
-| Context management | basic | deterministic compaction (truncate old tool results); no relevance selection or layering |
-| State & memory | weak (agent layer) | cross-round `ProposalMemory` exists at the *meta* layer; the agent has no long-term task memory (memory_rules.md is a placeholder) |
+| Context management | basic+ | deterministic compaction (truncate old tool results, never grows context); compaction-safe memory channel; no relevance selection or layering |
+| State & memory | **solid (episode)** | agent-layer `TaskMemory`: `memory_write` tool, notes ride the system prompt so compaction can't destroy them, bounded + traced + replayable, e2e-tested; cross-round `ProposalMemory` at the meta layer; cross-*task* persistent memory deliberately out of scope (self-contained benchmark → no measurable benefit) |
 
-**Verdict:** not a toy — two of six walls are near-production and better than many
-internal harnesses; the other four are present-but-basic. Its differentiator
+**Verdict:** not a toy — three of six walls are near-production/solid and better than
+many internal harnesses; the rest are present-but-basic. Its differentiator
 (self-improvement + rigorous measurement) sits *above* these six walls. Gaps are
-documented, not faked; several (agent memory, tool routing, resumable orchestration)
-are deliberate v1 scope cuts, not oversights.
+documented, not faked; the remaining cuts (cross-task memory, tool routing, resumable
+orchestration) are deliberate v1 scope decisions, not oversights.
 
 
 

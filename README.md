@@ -92,7 +92,8 @@ number carries a bootstrap or Wilson interval.
 
 The **agent loop** (`src/harnessforge/agent/loop.py`) is a from-scratch plan → tool-call
 → observation loop with retries, termination heuristics, context compaction, and a
-budget guard. Tools: `bash`, `read_file`, `write_file`, `apply_patch`, `finish`, run in
+budget guard. Tools: `bash`, `read_file`, `write_file`, `apply_patch`, `memory_write`,
+`finish`, run in
 a **Docker sandbox** (or a local sandbox for tests). Every step is a **JSONL trace event**
 with tokens, cost, and exit reason — mining, replay, and reporting all read that schema.
 
@@ -103,7 +104,7 @@ with tokens, cost, and exit reason — mining, replay, and reporting all read th
 ```
 harness/                 evolvable components (the "genome")
 src/harnessforge/
-  agent/       loop, LLM client, tools, context compaction
+  agent/       loop, LLM client, tools, context compaction, task memory, arg validation
   sandbox/     docker / local / terminal-bench sandboxes
   eval/        task format, runner, TB adapter+runner, select, stats, compare
   selfharness/ mining, proposal (multi-candidate), search (memory), validation, round/campaign
@@ -118,7 +119,7 @@ EXPERIMENTS.md           full experiment log + calibration table
 ## Tooling
 
 ```bash
-make report                    # lint + 36 tests + regenerate figures
+make report                    # lint + 56 tests + regenerate figures
 python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
 make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
 python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
@@ -134,7 +135,7 @@ attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # add ANTHROPIC_API_KEY
-make test                      # 36 tests, mock-LLM end-to-end, no API cost
+make test                      # 56 tests, mock-LLM end-to-end, no API cost
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local
@@ -147,6 +148,22 @@ python -m harnessforge.eval.tb_runner --tb-root ~/terminal-bench-2 --out runs/tb
 python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
     --regression-tasks t01_fix_off_by_one t05_fix_regex --repeats 3
 ```
+
+## Task memory
+
+Context compaction keeps runs under budget by truncating old tool results — which
+silently destroys information the agent may still need. The fix is durable storage
+*outside* the message history (`agent/memory.py`): the agent calls `memory_write` to
+save keyed notes (root cause, file paths, its plan), and the rendered notes ride on
+the system prompt every turn, so compaction cannot touch them by construction. Notes
+are bounded (`memory.max_notes`, `memory.max_chars_per_note` in `loop_policy.yaml`,
+tunable by the self-harness loop) with FIFO eviction, every write is a `memory_write`
+trace event visible in replay, and the end-to-end test proves the core claim: a note
+written before compaction is still in the system prompt the model receives after it.
+
+Memory is deliberately **episode-scoped**. Cross-task persistent memory stays out of
+scope for v1: the benchmark is self-contained tasks, so a persistent store would add
+machinery with no measurable benefit — same reasoning that kept code-graph tooling out.
 
 ## Error handling & recovery
 
@@ -173,7 +190,8 @@ Three of these were added *because a real run hit them* (see EXPERIMENTS.md): a
 retry loop with no timeout hung 27 min on a retired model ID; one task's API error
 crashed the whole suite via `asyncio.gather`; flaky networks needed jittered backoff.
 
-**Deliberately out of scope (v1):** agent-level long-term memory, semantic tool
+**Deliberately out of scope (v1):** cross-task persistent memory (episode-scoped
+memory is in — see Task memory above), semantic tool
 routing, graph-based resumable orchestration, and multi-agent evaluation. This is a
 research harness focused on *evaluation and self-improvement*, not a full production
 runtime — those walls are noted, not faked. See the harness-maturity self-assessment

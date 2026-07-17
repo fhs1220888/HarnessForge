@@ -14,6 +14,7 @@ from ..config import HarnessConfig
 from ..trace import EventType, TraceWriter
 from .context import compact_messages, estimate_tokens
 from .llm import LLMClient
+from .memory import TaskMemory
 from .tools import ToolExecutor
 from .validation import build_schema_map, validate_tool_input
 
@@ -62,6 +63,8 @@ class AgentLoop:
         tools = _anthropic_tools(self.cfg)
         schema_map = build_schema_map(self.cfg.tool_descriptions)
         max_validation_errors = p("termination.consecutive_validation_errors", 4)
+        memory = TaskMemory(max_notes=p("memory.max_notes", 20),
+                            max_chars_per_note=p("memory.max_chars_per_note", 1000))
         tests_ran = False
         recent_actions: list[str] = []
         consecutive_validation_errors = 0
@@ -85,8 +88,12 @@ class AgentLoop:
                 })
 
             # ---- model call ----------------------------------------------------
-            self.trace.emit(EventType.LLM_REQUEST, {"n_messages": len(messages)})
-            resp = await self.llm.complete(self.cfg.system_prompt, messages, tools)
+            # Memory rides on the system prompt, outside the message history, so
+            # compaction can never destroy it.
+            system = self.cfg.system_prompt + memory.render()
+            self.trace.emit(EventType.LLM_REQUEST,
+                            {"n_messages": len(messages), "n_memory_notes": len(memory)})
+            resp = await self.llm.complete(system, messages, tools)
             self.trace.emit(EventType.LLM_RESPONSE,
                             {"text": resp.text[:2000], "n_tool_calls": len(resp.tool_calls),
                              "stop_reason": resp.stop_reason},
@@ -137,6 +144,17 @@ class AgentLoop:
                                                step + 1, tests_ran)
                     continue
                 consecutive_validation_errors = 0
+
+                # ---- memory writes (loop-handled, like finish; never hit the sandbox)
+                if call["name"] == "memory_write":
+                    confirmation = memory.write(call["input"]["key"], call["input"]["content"])
+                    self.trace.emit(EventType.MEMORY_WRITE,
+                                    {"key": call["input"]["key"],
+                                     "content": call["input"]["content"][:500],
+                                     "n_notes": len(memory)})
+                    tool_results_content.append(
+                        self._tool_result_block(call["id"], confirmation))
+                    continue
 
                 self.trace.emit(EventType.TOOL_CALL, {"tool": call["name"], "input": call["input"]})
                 result = await self.executor.execute(call["name"], call["input"])

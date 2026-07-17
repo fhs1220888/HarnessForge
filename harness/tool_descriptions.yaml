@@ -44,6 +44,19 @@ tools:
         patch: { type: string, description: "Unified diff" }
       required: [patch]
 
+  - name: memory_write
+    description: >
+      Save a durable note (key facts, file paths, root causes, your plan) that
+      survives context compaction. Older tool outputs may be truncated from your
+      context; notes saved here are always shown to you. Reusing a key overwrites
+      that note. Keep notes short and factual.
+    input_schema:
+      type: object
+      properties:
+        key: { type: string, description: "Short identifier, e.g. 'root_cause'" }
+        content: { type: string, description: "The note text" }
+      required: [key, content]
+
   - name: finish
     description: End the task. Call only after running the tests.
     input_schema:
