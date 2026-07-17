@@ -87,6 +87,54 @@ async def test_full_loop_fixes_task(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_malformed_tool_args_rejected_then_recovers(tmp_path):
+    """A bad tool call (missing required 'command') must be rejected pre-execution
+    with a repair message, and the agent recovers on the next turn."""
+    workspace = tmp_path / "ws"
+    shutil.copytree(REPO / "tasks/t01_fix_off_by_one/workspace", workspace)
+
+    script = [
+        [{"name": "bash", "input": {"timeout_s": 5}}],            # malformed: no 'command'
+        [{"name": "write_file", "input": {"path": "calc.py", "content": FIXED_CALC}}],
+        [{"name": "bash", "input": {"command": "python -m pytest tests/ -q"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "recovered"}}],
+    ]
+    cfg = HarnessConfig.load(REPO / "harness")
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="valfix")
+        loop = AgentLoop(cfg, ScriptedLLM(script), ToolExecutor(sandbox), trace)
+        result = await loop.run("Fix calc.py, then run the tests.")
+        check = await sandbox.run("python -m pytest tests/ -q")
+
+    assert result.status == "done"
+    assert check.exit_code == 0
+    events = load_trace(trace.path)
+    val = [e for e in events if e["event_type"] == "validation_error"]
+    assert len(val) == 1 and "command" in val[0]["payload"]["error"]
+    # the malformed call was NOT executed (no tool_call for that bash with only timeout_s)
+    bad_calls = [e for e in events if e["event_type"] == "tool_call"
+                 and e["payload"].get("tool") == "bash"
+                 and "command" not in e["payload"].get("input", {})]
+    assert bad_calls == []
+
+
+@pytest.mark.asyncio
+async def test_loop_aborts_on_repeated_validation_errors(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    # distinct-but-all-malformed calls (missing 'command'), so the repeated-action
+    # guard doesn't pre-empt the validation-error guard we're testing here.
+    script = [[{"name": "bash", "input": {"timeout_s": i}}] for i in range(1, 6)]
+    cfg = HarnessConfig.load(REPO / "harness")
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="valabort")
+        loop = AgentLoop(cfg, ScriptedLLM(script), ToolExecutor(sandbox), trace)
+        result = await loop.run("Do something.")
+    assert result.exit_reason == "repeated_validation_error"
+    assert result.status == "aborted"
+
+
+@pytest.mark.asyncio
 async def test_loop_aborts_on_repeated_action(tmp_path):
     workspace = tmp_path / "ws"
     workspace.mkdir()

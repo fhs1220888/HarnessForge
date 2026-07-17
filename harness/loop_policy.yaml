@@ -27,3 +27,4 @@ context:
 termination:
   consecutive_identical_actions: 3   # abort if the agent repeats the same action N times
   consecutive_tool_errors: 5         # abort after N tool errors in a row
+  consecutive_validation_errors: 4   # abort if the agent keeps sending malformed tool args

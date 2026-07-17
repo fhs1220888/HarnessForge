@@ -24,6 +24,7 @@ class EventType(str, Enum):
     COMPACTION = "compaction"        # payload: tokens_before, tokens_after, strategy
     TERMINATION = "termination"      # payload: exit_reason, status, summary
     TEST_RUN = "test_run"            # payload: command, passed, output (truncated)
+    VALIDATION_ERROR = "validation_error"  # payload: tool, input, error (bad tool args, not executed)
 
 
 # Exit reasons — the vocabulary weakness mining clusters over. Extend as needed.
@@ -35,6 +36,7 @@ EXIT_REASONS = [
     "max_cost",
     "repeated_action",
     "repeated_tool_error",
+    "repeated_validation_error",
     "api_error",
     "sandbox_error",
 ]

@@ -148,13 +148,36 @@ python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
     --regression-tasks t01_fix_off_by_one t05_fix_regex --repeats 3
 ```
 
-## Reliability notes
+## Error handling & recovery
 
-Three production-style failures the harness hit and now handles, each surfaced by a
-real run (see EXPERIMENTS.md): a retry loop with no timeout silently hung for 27 min on
-a retired model ID; one task's API error crashed the whole eval suite via
-`asyncio.gather`; flaky networks needed exponential backoff with jitter. All fixed in
-fixed-runtime code and distinguished from genuine agent failures in the results.
+The boundary between a toy and a production harness is what happens off the happy
+path. What's handled here:
+
+- **Malformed tool arguments** are validated against each tool's JSON Schema *before*
+  execution (`agent/validation.py`); a bad call is rejected with a precise repair
+  message ("missing required field `command`") instead of crashing inside the tool,
+  and the agent recovers on the next turn. Repeated malformed calls abort with
+  `repeated_validation_error`.
+- **Tool timeouts**: every sandbox command runs under a wall-clock timeout (exit 124).
+- **Transient API failures**: explicit client timeout + our own retry loop with
+  exponential backoff and jitter; unretryable errors (e.g. 404 unknown model) fail fast.
+- **Infra vs agent failures kept separate**: a network/sandbox failure retries the
+  whole task once, then records an explicit `api_error`/`infra_error` outcome that is
+  excluded from pass-rate — so infrastructure noise never masquerades as agent ability.
+- **Budget guards**: hard caps on steps, tokens, and cost; loop-level termination on
+  repeated identical actions or repeated errors.
+- **Sandbox constraints**: per-task Docker isolation (no network for native tasks,
+  memory/CPU limits); harness self-edits are backed up to `_history/` and git.
+
+Three of these were added *because a real run hit them* (see EXPERIMENTS.md): a
+retry loop with no timeout hung 27 min on a retired model ID; one task's API error
+crashed the whole suite via `asyncio.gather`; flaky networks needed jittered backoff.
+
+**Deliberately out of scope (v1):** agent-level long-term memory, semantic tool
+routing, graph-based resumable orchestration, and multi-agent evaluation. This is a
+research harness focused on *evaluation and self-improvement*, not a full production
+runtime — those walls are noted, not faked. See the harness-maturity self-assessment
+in [EXPERIMENTS.md](EXPERIMENTS.md).
 
 *Terminal-Bench is © Laude Institute, Apache-2.0. This project vendors none of it; the
 adapter reads a local clone.*

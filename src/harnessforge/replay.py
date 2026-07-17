@@ -63,6 +63,9 @@ def replay(path: Path, full: bool = False, color: bool = True) -> dict[str, Any]
         elif t == "test_run":
             mark = _c("green", "PASS", color) if p.get("passed") else _c("red", "FAIL", color)
             print("  │ " + _c("b", f"test  {mark}", color))
+        elif t == "validation_error":
+            print("  │ " + _c("red", f"reject {p.get('tool')} ", color)
+                  + _c("dim", _clip(str(p.get("error", "")), clip, full), color))
         elif t == "compaction":
             print("  │ " + _c("dim", f"compaction {p.get('tokens_before')}→"
                                      f"{p.get('tokens_after')} tok", color))

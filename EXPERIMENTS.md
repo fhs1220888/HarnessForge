@@ -1,5 +1,28 @@
 # Experiment Log
 
+## Harness maturity self-assessment
+
+Scored against the six production-harness components (context, tools, orchestration,
+state/memory, evaluation/observability, constraints/recovery — the industry
+decomposition per LangChain/OpenAI/Anthropic). Honest, not aspirational:
+
+| Component | Status | Notes |
+|---|---|---|
+| Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, run manifests, independent ground-truth verification, full self-harness eval loop |
+| Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, repeated-error termination |
+| Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (5 tools, not needed) |
+| Orchestration | basic | single loop with termination conditions; no graph/checkpoint/resume or multi-agent |
+| Context management | basic | deterministic compaction (truncate old tool results); no relevance selection or layering |
+| State & memory | weak (agent layer) | cross-round `ProposalMemory` exists at the *meta* layer; the agent has no long-term task memory (memory_rules.md is a placeholder) |
+
+**Verdict:** not a toy — two of six walls are near-production and better than many
+internal harnesses; the other four are present-but-basic. Its differentiator
+(self-improvement + rigorous measurement) sits *above* these six walls. Gaps are
+documented, not faked; several (agent memory, tool routing, resumable orchestration)
+are deliberate v1 scope cuts, not oversights.
+
+
+
 Agent under test: `claude-haiku-4-5` · Miner/proposer: `claude-sonnet-5` ·
 Budget: max 8 steps, $0.25/task · Suite: 18 tasks · Sandbox: local
 

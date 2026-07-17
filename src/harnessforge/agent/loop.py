@@ -15,6 +15,7 @@ from ..trace import EventType, TraceWriter
 from .context import compact_messages, estimate_tokens
 from .llm import LLMClient
 from .tools import ToolExecutor
+from .validation import build_schema_map, validate_tool_input
 
 
 @dataclass
@@ -59,8 +60,11 @@ class AgentLoop:
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": task_prompt}]
         tools = _anthropic_tools(self.cfg)
+        schema_map = build_schema_map(self.cfg.tool_descriptions)
+        max_validation_errors = p("termination.consecutive_validation_errors", 4)
         tests_ran = False
         recent_actions: list[str] = []
+        consecutive_validation_errors = 0
 
         for step in range(max_steps):
             # ---- budget guards -------------------------------------------------
@@ -114,6 +118,25 @@ class AgentLoop:
                         continue
                     self.trace.emit(EventType.TOOL_CALL, {"tool": "finish", "input": call["input"]})
                     return self._terminate(f"finished_{status}", status, step + 1, tests_ran)
+
+                # ---- pre-execution parameter validation -----------------------
+                # Reject malformed tool arguments against the declared schema BEFORE
+                # executing, and hand the model a precise repair message. Prevents
+                # opaque in-tool crashes and gives arg-level malformed-output recovery.
+                schema_err = validate_tool_input(schema_map.get(call["name"]), call["input"])
+                if schema_err is not None:
+                    consecutive_validation_errors += 1
+                    self.trace.emit(EventType.VALIDATION_ERROR,
+                                    {"tool": call["name"], "input": call["input"],
+                                     "error": schema_err})
+                    tool_results_content.append(
+                        self._tool_result_block(call["id"], schema_err, is_error=True))
+                    if consecutive_validation_errors >= max_validation_errors:
+                        messages.append({"role": "user", "content": tool_results_content})
+                        return self._terminate("repeated_validation_error", "aborted",
+                                               step + 1, tests_ran)
+                    continue
+                consecutive_validation_errors = 0
 
                 self.trace.emit(EventType.TOOL_CALL, {"tool": call["name"], "input": call["input"]})
                 result = await self.executor.execute(call["name"], call["input"])
