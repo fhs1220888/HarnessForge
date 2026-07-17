@@ -20,6 +20,7 @@ from typing import Any
 
 from ..trace import load_trace
 from .schema import FailurePattern, MiningReport
+from .structured import complete_json_array
 
 MINING_PROMPT = """\
 You are analyzing execution traces of a coding agent that FAILED its tasks.
@@ -90,18 +91,20 @@ async def mine(run_dir: Path) -> MiningReport:
             + compress_trace(r["events"])
             for r in runs[:6]  # cap excerpts per cluster to control cost
         )
-        resp = await miner.complete(
+        res = await complete_json_array(
+            miner,
             system="You are a rigorous agent-harness failure analyst.",
-            messages=[{"role": "user", "content": MINING_PROMPT.format(
-                exit_reason=exit_reason, excerpts=excerpts)}],
+            prompt=MINING_PROMPT.format(exit_reason=exit_reason, excerpts=excerpts),
+            item_parser=lambda item: FailurePattern(
+                **{**item, "frequency": len(item.get("evidence_runs", []))}),
         )
-        try:
-            raw = json.loads(resp.text[resp.text.find("[") : resp.text.rfind("]") + 1])
-            for item in raw:
-                item["frequency"] = len(item.get("evidence_runs", []))
-                report.patterns.append(FailurePattern(**item))
-        except (json.JSONDecodeError, ValueError):
-            pass  # TODO: retry with a repair prompt
+        report.patterns.extend(res.items)
+        if res.repaired:
+            print(f"[mining] cluster {exit_reason}: malformed output repaired "
+                  f"({res.llm_calls} calls; first error: {res.errors[0]})")
+        elif res.errors:
+            print(f"[mining] cluster {exit_reason}: dropped after repair attempt "
+                  f"({'; '.join(res.errors)})")
 
     out = run_dir / "mining_report.json"
     out.write_text(report.model_dump_json(indent=2), encoding="utf-8")

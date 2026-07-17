@@ -18,6 +18,7 @@ import yaml
 
 from ..config import EVOLVABLE_COMPONENTS, HARNESS_DIR
 from .schema import MiningReport, Proposal, ProposalMemory
+from .structured import complete_json_array
 
 PROPOSAL_PROMPT = """\
 You are improving a coding-agent harness. Its evolvable components are:
@@ -94,7 +95,6 @@ async def generate(report: MiningReport, max_proposals: int = 6,
     the round driver can validate several and keep only the best. Past rejections
     (memory) are injected so the proposer avoids known dead ends.
     """
-    import json
     import os
 
     from ..agent.llm import LLMClient
@@ -110,9 +110,10 @@ async def generate(report: MiningReport, max_proposals: int = 6,
         if len(proposals) >= max_proposals:
             break
         avoid = memory.avoid_note(pattern.pattern_id) if memory else "None yet."
-        resp = await llm.complete(
+        res = await complete_json_array(
+            llm,
             system="You are a careful harness engineer. Minimal, reversible changes only.",
-            messages=[{"role": "user", "content": PROPOSAL_PROMPT.format(
+            prompt=PROPOSAL_PROMPT.format(
                 components=", ".join(EVOLVABLE_COMPONENTS),
                 pattern_id=pattern.pattern_id,
                 description=pattern.description,
@@ -120,20 +121,22 @@ async def generate(report: MiningReport, max_proposals: int = 6,
                 avoid=avoid,
                 n_candidates=candidates_per_pattern,
                 component_contents=contents,
-            )}],
+            ),
             max_tokens=8192,
-        )
-        try:
-            raw = json.loads(resp.text[resp.text.find("[") : resp.text.rfind("]") + 1])
-        except json.JSONDecodeError:
-            continue  # TODO: repair prompt
-        for item in raw:
-            p = Proposal(
+            item_parser=lambda item: Proposal(
                 proposal_id=f"prop-{uuid.uuid4().hex[:8]}",
                 failure_pattern=pattern.pattern_id,
                 candidate_group=pattern.pattern_id,
                 **item,
-            )
+            ),
+        )
+        if res.repaired:
+            print(f"[proposal] pattern {pattern.pattern_id}: malformed output repaired "
+                  f"({res.llm_calls} calls)")
+        elif res.errors:
+            print(f"[proposal] pattern {pattern.pattern_id}: "
+                  f"{'; '.join(res.errors)}")
+        for p in res.items:
             err = sanity_check(p, harness_dir)
             if err is None:
                 proposals.append(p)

@@ -119,7 +119,7 @@ EXPERIMENTS.md           full experiment log + calibration table
 ## Tooling
 
 ```bash
-make report                    # lint + 56 tests + regenerate figures
+make report                    # lint + 65 tests + regenerate figures
 python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
 make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
 python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
@@ -135,7 +135,7 @@ attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # add ANTHROPIC_API_KEY
-make test                      # 56 tests, mock-LLM end-to-end, no API cost
+make test                      # 65 tests, mock-LLM end-to-end, no API cost
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local
@@ -175,6 +175,11 @@ path. What's handled here:
   message ("missing required field `command`") instead of crashing inside the tool,
   and the agent recovers on the next turn. Repeated malformed calls abort with
   `repeated_validation_error`.
+- **Malformed structured output (meta layer)**: when the miner/proposer must emit a
+  JSON array and doesn't, the harness replies with the model's own output plus the
+  exact parse/validation error and retries once (`selfharness/structured.py`); on the
+  final attempt, valid items are salvaged instead of dropping the whole batch. Item-level
+  schema failures (pydantic) get the same repair loop, not just unparseable JSON.
 - **Tool timeouts**: every sandbox command runs under a wall-clock timeout (exit 124).
 - **Transient API failures**: explicit client timeout + our own retry loop with
   exponential backoff and jitter; unretryable errors (e.g. 404 unknown model) fail fast.

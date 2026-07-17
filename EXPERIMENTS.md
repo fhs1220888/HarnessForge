@@ -9,7 +9,7 @@ decomposition per LangChain/OpenAI/Anthropic). Honest, not aspirational:
 | Component | Status | Notes |
 |---|---|---|
 | Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, run manifests, independent ground-truth verification, full self-harness eval loop |
-| Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, repeated-error termination |
+| Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, **malformed-output repair loop (agent args + meta-layer JSON)**, repeated-error termination |
 | Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (6 tools, not needed) |
 | Orchestration | basic | single loop with termination conditions; no graph/checkpoint/resume or multi-agent |
 | Context management | basic+ | deterministic compaction (truncate old tool results, never grows context); compaction-safe memory channel; no relevance selection or layering |
