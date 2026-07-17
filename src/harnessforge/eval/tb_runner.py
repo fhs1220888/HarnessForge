@@ -18,7 +18,7 @@ import asyncio
 import copy
 import json
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 from ..agent.llm import LLMClient
@@ -29,6 +29,7 @@ import os
 
 from ..sandbox.tb_sandbox import TBSandbox
 from ..trace import TraceWriter
+from .persistence import ResultSink
 from .stats import RunManifest, suite_hash
 from .tb_adapter import TBTask, load_subset
 
@@ -85,11 +86,17 @@ async def run_tb_task(task: TBTask, cfg: HarnessConfig, out_dir: Path, repeat: i
 
 async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurrency: int = 2,
                        subset: list[str] | None = None, max_steps: int = 25,
-                       harness_dir: Path | None = None) -> dict:
+                       harness_dir: Path | None = None, resume: bool = False) -> dict:
     base = HarnessConfig.load(harness_dir) if harness_dir else HarnessConfig.load()
     cfg = _tb_budget_config(base, max_steps)
     tasks = load_subset(tb_root, subset)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    sink = ResultSink(out_dir, resume=resume)
+    sink.check_harness_version(cfg.version)
+    if sink.n_resumed:
+        print(f"[tb] resume: {sink.n_resumed} completed outcomes kept, skipping them",
+              flush=True)
 
     RunManifest(
         benchmark="terminal-bench-2 / tb-subset",
@@ -103,29 +110,27 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
     ).write(out_dir)
 
     sem = asyncio.Semaphore(concurrency)
-    outcomes: list[TBOutcome] = []
 
     async def guarded(task: TBTask, r: int) -> None:
         async with sem:
             for attempt in (1, 2):
                 try:
-                    outcomes.append(await run_tb_task(task, cfg, out_dir, r))
+                    sink.record(await run_tb_task(task, cfg, out_dir, r))
                     return
                 except Exception as e:
                     print(f"[tb] {task.task_id} r{r} infra failure "
                           f"(attempt {attempt}/2): {type(e).__name__}: {str(e)[:150]}",
                           flush=True)
-            outcomes.append(TBOutcome(
+            sink.record(TBOutcome(
                 task_id=task.task_id, repeat=r, run_id=f"{task.task_id}-r{r}-infra-fail",
                 passed=False, exit_reason="infra_error", steps=0, cost_usd=0.0, tokens=0,
                 harness_version=cfg.version, difficulty=task.difficulty, category=task.category))
 
-    await asyncio.gather(*(guarded(t, r) for t in tasks for r in range(repeats)))
+    jobs = [(t, r) for t in tasks for r in range(repeats)
+            if not sink.is_done(t.task_id, r)]
+    await asyncio.gather(*(guarded(t, r) for t, r in jobs))
 
-    with (out_dir / "results.jsonl").open("w", encoding="utf-8") as f:
-        for o in outcomes:
-            f.write(json.dumps(asdict(o)) + "\n")
-
+    outcomes = [TBOutcome(**row) for row in sink.rows()]
     scored = [o for o in outcomes if o.exit_reason != "infra_error"]
     summary = {
         "benchmark": "terminal-bench-2 / tb-subset",
@@ -155,10 +160,13 @@ def main() -> None:
     ap.add_argument("--tb-max-steps", type=int, default=25)
     ap.add_argument("--subset", nargs="*", default=None, help="task IDs; default tb-subset-v1")
     ap.add_argument("--harness-dir", type=Path, default=None)
+    ap.add_argument("--resume", action="store_true",
+                    help="Continue a crashed run: keep completed outcomes in --out, "
+                         "re-run only missing (task, repeat) pairs and infra failures")
     args = ap.parse_args()
     summary = asyncio.run(run_tb_suite(
         args.tb_root, args.out, args.repeats, args.concurrency,
-        args.subset, args.tb_max_steps, args.harness_dir))
+        args.subset, args.tb_max_steps, args.harness_dir, resume=args.resume))
     print(json.dumps(summary, indent=2))
 
 

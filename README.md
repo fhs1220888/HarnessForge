@@ -119,7 +119,7 @@ EXPERIMENTS.md           full experiment log + calibration table
 ## Tooling
 
 ```bash
-make report                    # lint + 65 tests + regenerate figures
+make report                    # lint + 72 tests + regenerate figures
 python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
 make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
 python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
@@ -135,7 +135,7 @@ attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # add ANTHROPIC_API_KEY
-make test                      # 65 tests, mock-LLM end-to-end, no API cost
+make test                      # 72 tests, mock-LLM end-to-end, no API cost
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local
@@ -186,6 +186,11 @@ path. What's handled here:
 - **Infra vs agent failures kept separate**: a network/sandbox failure retries the
   whole task once, then records an explicit `api_error`/`infra_error` outcome that is
   excluded from pass-rate — so infrastructure noise never masquerades as agent ability.
+- **Crash-safe suite runs + resume**: every outcome is appended to `results.jsonl`
+  the moment it exists (`eval/persistence.py`), so a mid-suite crash no longer
+  discards completed API spend; `--resume` re-runs only missing (task, repeat) pairs
+  and infra failures, and *refuses* to resume under a different harness version —
+  mixed-version results files would corrupt provenance.
 - **Budget guards**: hard caps on steps, tokens, and cost; loop-level termination on
   repeated identical actions or repeated errors.
 - **Sandbox constraints**: per-task Docker isolation (no network for native tasks,

@@ -19,7 +19,7 @@ import os
 import shutil
 import tempfile
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 from ..agent.llm import LLMClient
@@ -29,6 +29,7 @@ from ..config import HarnessConfig
 from ..sandbox.docker_sandbox import Sandbox
 from ..sandbox.local_sandbox import LocalSandbox
 from ..trace import TraceWriter
+from .persistence import ResultSink
 from .stats import RunManifest, suite_hash
 from .task import Task, discover_tasks
 
@@ -81,12 +82,21 @@ async def run_one(task: Task, cfg: HarnessConfig, out_dir: Path, repeat: int,
 
 async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
                     concurrency: int = 2, task_ids: list[str] | None = None,
-                    sandbox_kind: str = "docker", harness_dir: Path | None = None) -> dict:
+                    sandbox_kind: str = "docker", harness_dir: Path | None = None,
+                    resume: bool = False) -> dict:
     cfg = HarnessConfig.load(harness_dir) if harness_dir else HarnessConfig.load()
     tasks = discover_tasks(tasks_root)
     if task_ids:
         tasks = [t for t in tasks if t.task_id in task_ids]
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Crash-safe: every outcome hits results.jsonl the moment it exists; --resume
+    # skips completed (task, repeat) pairs and re-runs infra failures.
+    sink = ResultSink(out_dir, resume=resume)
+    sink.check_harness_version(cfg.version)
+    if sink.n_resumed:
+        print(f"[runner] resume: {sink.n_resumed} completed outcomes kept, "
+              f"skipping them", flush=True)
 
     RunManifest(
         benchmark="native-suite",
@@ -101,7 +111,6 @@ async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
     ).write(out_dir)
 
     sem = asyncio.Semaphore(concurrency)
-    outcomes: list[TaskOutcome] = []
 
     async def guarded(task: Task, r: int) -> None:
         async with sem:
@@ -110,23 +119,22 @@ async def run_suite(tasks_root: Path, out_dir: Path, repeats: int = 1,
             # task once, then record an explicit api_error outcome.
             for attempt in (1, 2):
                 try:
-                    outcomes.append(await run_one(task, cfg, out_dir, r, sandbox_kind))
+                    sink.record(await run_one(task, cfg, out_dir, r, sandbox_kind))
                     return
                 except Exception as e:
                     print(f"[runner] {task.task_id} r{r} infra failure "
                           f"(attempt {attempt}/2): {type(e).__name__}: {str(e)[:150]}",
                           flush=True)
-            outcomes.append(TaskOutcome(
+            sink.record(TaskOutcome(
                 task_id=task.task_id, repeat=r, run_id=f"{task.task_id}-r{r}-infra-fail",
                 passed=False, exit_reason="api_error", steps=0, cost_usd=0.0,
                 tokens=0, harness_version=cfg.version, check_tail="infra failure"))
 
-    await asyncio.gather(*(guarded(t, r) for t in tasks for r in range(repeats)))
+    jobs = [(t, r) for t in tasks for r in range(repeats)
+            if not sink.is_done(t.task_id, r)]
+    await asyncio.gather(*(guarded(t, r) for t, r in jobs))
 
-    with (out_dir / "results.jsonl").open("w", encoding="utf-8") as f:
-        for o in outcomes:
-            f.write(json.dumps(asdict(o)) + "\n")
-
+    outcomes = [TaskOutcome(**row) for row in sink.rows()]
     summary = {
         "harness_version": cfg.version,
         "n_tasks": len(tasks),
@@ -152,10 +160,13 @@ def main() -> None:
     ap.add_argument("--sandbox", choices=list(SANDBOXES), default="docker")
     ap.add_argument("--harness-dir", type=Path, default=None,
                     help="Use an alternate harness component dir (for A/B comparisons)")
+    ap.add_argument("--resume", action="store_true",
+                    help="Continue a crashed run: keep completed outcomes in --out, "
+                         "re-run only missing (task, repeat) pairs and infra failures")
     args = ap.parse_args()
     summary = asyncio.run(run_suite(args.tasks, args.out, args.repeats,
                                     args.concurrency, args.task_ids, args.sandbox,
-                                    args.harness_dir))
+                                    args.harness_dir, resume=args.resume))
     print(json.dumps(summary, indent=2))
 
 

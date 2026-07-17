@@ -11,7 +11,7 @@ decomposition per LangChain/OpenAI/Anthropic). Honest, not aspirational:
 | Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, run manifests, independent ground-truth verification, full self-harness eval loop |
 | Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, **malformed-output repair loop (agent args + meta-layer JSON)**, repeated-error termination |
 | Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (6 tools, not needed) |
-| Orchestration | basic | single loop with termination conditions; no graph/checkpoint/resume or multi-agent |
+| Orchestration | basic+ | single loop with termination conditions; **crash-safe suite persistence + `--resume`** (incremental results.jsonl, infra failures re-run, harness-version guard); no agent-loop graph/checkpoint or multi-agent |
 | Context management | basic+ | deterministic compaction (truncate old tool results, never grows context); compaction-safe memory channel; no relevance selection or layering |
 | State & memory | **solid (episode)** | agent-layer `TaskMemory`: `memory_write` tool, notes ride the system prompt so compaction can't destroy them, bounded + traced + replayable, e2e-tested; cross-round `ProposalMemory` at the meta layer; cross-*task* persistent memory deliberately out of scope (self-contained benchmark → no measurable benefit) |
 
