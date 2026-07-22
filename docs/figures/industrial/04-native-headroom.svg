@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="617.525062pt" height="344.448pt" viewBox="0 0 617.525062 344.448" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>HarnessForge figure generator</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 344.448 
+L 617.525062 344.448 
+L 617.525062 0 
+L 0 0 
+z
+" style="fill: #f7f8fa"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 61.109063 272.448 
+L 606.005063 272.448 
+L 606.005063 92.736 
+L 61.109063 92.736 
+z
+" style="fill: #f7f8fa"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(128.958208 288.047414)">10 tasks</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(128.666802 300.049367)">30 steps</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(363.409009 288.047414)">18 tasks</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(363.117603 300.049367)">30 steps</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(495.99498 288.047414)">18 tasks</text>
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(498.884823 300.049367)">8 steps</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_4">
+      <path d="M 61.109063 272.448 
+L 606.005063 272.448 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke: #e4e7ed; stroke-opacity: 0.8; stroke-width: 0.8; stroke-linecap: round"/>
+     </g>
+     <g id="line2d_5"/>
+     <g id="text_4">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a2e" x="54.109063" y="276.246828" transform="rotate(-0 54.109063 276.246828)">0%</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_6">
+      <path d="M 61.109063 234.693378 
+L 606.005063 234.693378 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke: #e4e7ed; stroke-opacity: 0.8; stroke-width: 0.8; stroke-linecap: round"/>
+     </g>
+     <g id="line2d_7"/>
+     <g id="text_5">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a2e" x="54.109063" y="238.492206" transform="rotate(-0 54.109063 238.492206)">25%</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_8">
+      <path d="M 61.109063 196.938756 
+L 606.005063 196.938756 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke: #e4e7ed; stroke-opacity: 0.8; stroke-width: 0.8; stroke-linecap: round"/>
+     </g>
+     <g id="line2d_9"/>
+     <g id="text_6">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a2e" x="54.109063" y="200.737584" transform="rotate(-0 54.109063 200.737584)">50%</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_10">
+      <path d="M 61.109063 159.184134 
+L 606.005063 159.184134 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke: #e4e7ed; stroke-opacity: 0.8; stroke-width: 0.8; stroke-linecap: round"/>
+     </g>
+     <g id="line2d_11"/>
+     <g id="text_7">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a2e" x="54.109063" y="162.982963" transform="rotate(-0 54.109063 162.982963)">75%</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_12">
+      <path d="M 61.109063 121.429513 
+L 606.005063 121.429513 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke: #e4e7ed; stroke-opacity: 0.8; stroke-width: 0.8; stroke-linecap: round"/>
+     </g>
+     <g id="line2d_13"/>
+     <g id="text_8">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #1a1a2e" x="54.109063" y="125.228341" transform="rotate(-0 54.109063 125.228341)">100%</text>
+     </g>
+    </g>
+    <g id="text_9">
+     <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a2e" x="19.117656" y="182.592" transform="rotate(-90 19.117656 182.592)">pass rate</text>
+    </g>
+   </g>
+   <g id="line2d_14">
+    <path d="M 61.109063 121.429513 
+L 606.005063 121.429513 
+" clip-path="url(#p7cfbf187c9)" style="fill: none; stroke-dasharray: 4.4,3.3; stroke-dashoffset: 0; stroke: #8d99ae; stroke-width: 1.1"/>
+   </g>
+   <g id="line2d_15">
+    <path d="M 384.489478 108.592941 
+L 384.489478 104.062387 
+L 517.075448 104.062387 
+L 517.075448 108.592941 
+" style="fill: none; stroke: #1a1a2e; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 61.109063 272.448 
+L 61.109063 92.736 
+" style="fill: none; stroke: #d9dee8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 61.109062 272.448 
+L 606.005062 272.448 
+" style="fill: none; stroke: #d9dee8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 101.531614 272.448 
+L 198.545739 272.448 
+L 198.545739 121.429513 
+L 101.531614 121.429513 
+z
+" clip-path="url(#p7cfbf187c9)" style="fill: #8d99ae"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 335.982416 272.448 
+L 432.99654 272.448 
+L 432.99654 121.429513 
+L 335.982416 121.429513 
+z
+" clip-path="url(#p7cfbf187c9)" style="fill: #2a9d8f"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 468.568386 272.448 
+L 565.582511 272.448 
+L 565.582511 171.718669 
+L 468.568386 171.718669 
+z
+" clip-path="url(#p7cfbf187c9)" style="fill: url(#h8071173927); stroke: #e9c46a; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a2e" x="150.038677" y="115.131589" transform="rotate(-0 150.038677 115.131589)">100%</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a2e" x="384.489478" y="115.131589" transform="rotate(-0 384.489478 115.131589)">100%</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a2e" x="517.075448" y="165.420746" transform="rotate(-0 517.075448 165.420746)">66.7%</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #1a1a2e" x="450.782463" y="99.755117" transform="rotate(-0 450.782463 99.755117)">same 18-task suite</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(498.288651 214.990821)">-33.3 pp</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #1a1a2e" transform="translate(482.359355 225.793282)">with 8-step cap</text>
+   </g>
+  </g>
+  <g id="text_15">
+   <text style="font-size: 18px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #1a1a2e" x="35.765062" y="25.197187" transform="rotate(-0 35.765062 25.197187)">Headroom Comes From Budget, Not Task Difficulty</text>
+  </g>
+  <g id="text_16">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #8d99ae" x="35.765062" y="34.981716" transform="rotate(-0 35.765062 34.981716)">The controlled contrast is the same 18-task suite at 30 versus 8 steps</text>
+  </g>
+  <g id="text_17">
+   <text style="font-size: 7.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #8d99ae" x="35.765062" y="331.126242" transform="rotate(-0 35.765062 331.126242)">Source: EXPERIMENTS.md · docs/data/native_baseline_v4_summary.json</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p7cfbf187c9">
+   <rect x="61.109063" y="92.736" width="544.896" height="179.712"/>
+  </clipPath>
+ </defs>
+ <defs>
+  <pattern id="h8071173927" patternUnits="userSpaceOnUse" x="0" y="0" width="72" height="72">
+   <rect x="0" y="0" width="73" height="73" fill="#e94560"/>
+   <path d="M -36 36 
+L 36 -36 
+M -32 40 
+L 40 -32 
+M -28 44 
+L 44 -28 
+M -24 48 
+L 48 -24 
+M -20 52 
+L 52 -20 
+M -16 56 
+L 56 -16 
+M -12 60 
+L 60 -12 
+M -8 64 
+L 64 -8 
+M -4 68 
+L 68 -4 
+M 0 72 
+L 72 0 
+M 4 76 
+L 76 4 
+M 8 80 
+L 80 8 
+M 12 84 
+L 84 12 
+M 16 88 
+L 88 16 
+M 20 92 
+L 92 20 
+M 24 96 
+L 96 24 
+M 28 100 
+L 100 28 
+M 32 104 
+L 104 32 
+M 36 108 
+L 108 36 
+" style="fill: #e9c46a; stroke: #e9c46a; stroke-width: 1.0; stroke-linecap: butt; stroke-linejoin: miter"/>
+  </pattern>
+ </defs>
+</svg>

@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "generator": "scripts/make_figures.py",
+  "palette": {
+    "ink": "#1a1a2e",
+    "positive": "#2a9d8f",
+    "failure": "#e94560",
+    "warning": "#e9c46a",
+    "neutral": "#8d99ae"
+  },
+  "sources": [
+    "docs/data/tb_baseline_summary.json",
+    "docs/data/tb_finishfix_summary.json",
+    "docs/data/tb_selfverify_summary.json",
+    "docs/data/tb_selfverify_extra_summary.json",
+    "docs/data/tb_base_extra_summary.json",
+    "docs/data/native_baseline_v4_summary.json",
+    "docs/data/calibration.json",
+    "runs/tb_baseline/results.jsonl",
+    "runs/tb_base_extra/results.jsonl",
+    "runs/tb_finishfix/results.jsonl",
+    "runs/tb_selfverify/results.jsonl",
+    "runs/tb_selfverify_extra/results.jsonl",
+    "EXPERIMENTS.md",
+    "src/harnessforge/eval/select.py"
+  ],
+  "charts": [
+    {
+      "slug": "01-terminal-bench-baseline",
+      "title": "Terminal-Bench Baseline",
+      "files": [
+        "docs/figures/industrial/01-terminal-bench-baseline.png",
+        "docs/figures/industrial/01-terminal-bench-baseline.svg",
+        "docs/figures/tb_baseline.png"
+      ]
+    },
+    {
+      "slug": "02-per-task-pass-rate",
+      "title": "Per-Task Pass Rate",
+      "files": [
+        "docs/figures/industrial/02-per-task-pass-rate.png",
+        "docs/figures/industrial/02-per-task-pass-rate.svg"
+      ]
+    },
+    {
+      "slug": "03-exit-reason-breakdown",
+      "title": "Why Runs Ended",
+      "files": [
+        "docs/figures/industrial/03-exit-reason-breakdown.png",
+        "docs/figures/industrial/03-exit-reason-breakdown.svg"
+      ]
+    },
+    {
+      "slug": "04-native-headroom",
+      "title": "Native Headroom",
+      "files": [
+        "docs/figures/industrial/04-native-headroom.png",
+        "docs/figures/industrial/04-native-headroom.svg",
+        "docs/figures/native_headroom.png"
+      ]
+    },
+    {
+      "slug": "05-intervention-arc",
+      "title": "Harness Intervention Arc",
+      "files": [
+        "docs/figures/industrial/05-intervention-arc.png",
+        "docs/figures/industrial/05-intervention-arc.svg"
+      ]
+    },
+    {
+      "slug": "06-finishfix-ab",
+      "title": "Finish-Fix A/B",
+      "files": [
+        "docs/figures/industrial/06-finishfix-ab.png",
+        "docs/figures/industrial/06-finishfix-ab.svg",
+        "docs/figures/ab_finishfix.png"
+      ]
+    },
+    {
+      "slug": "07-selfverify-effects",
+      "title": "Selfverify Effects",
+      "files": [
+        "docs/figures/industrial/07-selfverify-effects.png",
+        "docs/figures/industrial/07-selfverify-effects.svg",
+        "docs/figures/selfverify_metrics.png"
+      ]
+    },
+    {
+      "slug": "08-high-signal-validation",
+      "title": "High-Signal Validation Set",
+      "files": [
+        "docs/figures/industrial/08-high-signal-validation.png",
+        "docs/figures/industrial/08-high-signal-validation.svg"
+      ]
+    },
+    {
+      "slug": "09-proposal-calibration",
+      "title": "Proposal Calibration",
+      "files": [
+        "docs/figures/industrial/09-proposal-calibration.png",
+        "docs/figures/industrial/09-proposal-calibration.svg"
+      ]
+    },
+    {
+      "slug": "10-efficiency-under-constraint",
+      "title": "Efficiency Under Constraint",
+      "files": [
+        "docs/figures/industrial/10-efficiency-under-constraint.png",
+        "docs/figures/industrial/10-efficiency-under-constraint.svg"
+      ]
+    },
+    {
+      "slug": "11-failure-mining-pipeline",
+      "title": "Failure Mining Pipeline",
+      "files": [
+        "docs/figures/industrial/11-failure-mining-pipeline.png",
+        "docs/figures/industrial/11-failure-mining-pipeline.svg"
+      ]
+    },
+    {
+      "slug": "12-task-classification",
+      "title": "Task Classification Matrix",
+      "files": [
+        "docs/figures/industrial/12-task-classification.png",
+        "docs/figures/industrial/12-task-classification.svg"
+      ]
+    },
+    {
+      "slug": "13-trace-event-timeline",
+      "title": "Trace Event Timeline",
+      "files": [
+        "docs/figures/industrial/13-trace-event-timeline.png",
+        "docs/figures/industrial/13-trace-event-timeline.svg"
+      ]
+    },
+    {
+      "slug": "14-reliability-surface",
+      "title": "Harness Reliability Surface",
+      "files": [
+        "docs/figures/industrial/14-reliability-surface.png",
+        "docs/figures/industrial/14-reliability-surface.svg"
+      ]
+    },
+    {
+      "slug": "15-readme-hero",
+      "title": "README Hero Summary",
+      "files": [
+        "docs/figures/industrial/15-readme-hero.png",
+        "docs/figures/industrial/15-readme-hero.svg"
+      ]
+    }
+  ]
+}

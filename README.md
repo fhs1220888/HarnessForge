@@ -22,7 +22,7 @@ verified by TB's own reward check). Agent under test: `claude-haiku-4-5`. 25-ste
 |---|---|---|
 | Baseline | **47.5%** (19/40, 2 repeats) | 36/40 runs exhausted the step budget without calling `finish` |
 
-![TB baseline](docs/figures/tb_baseline.png)
+![HarnessForge evidence under constraint](docs/figures/industrial/15-readme-hero.png)
 
 **The headline isn't a number — it's a method.** Every proposed harness change is
 measured, and the ones that turn out to be noise are rejected, including changes an
@@ -45,7 +45,8 @@ the right metric) more than a cleverer change.
 
 ![selfverify metrics](docs/figures/selfverify_metrics.png)
 
-Full write-up: [EXPERIMENTS.md](EXPERIMENTS.md).
+Full write-up: [EXPERIMENTS.md](EXPERIMENTS.md). Full visual evidence set:
+[industrial chart suite](docs/figures/industrial/README.md).
 
 ---
 

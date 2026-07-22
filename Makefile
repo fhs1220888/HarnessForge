@@ -13,9 +13,9 @@ test: ## Run the test suite (no API key / Docker needed)
 	pytest -q
 
 lint: ## Ruff lint
-	ruff check src tests
+	ruff check src tests scripts
 
-figures: ## Regenerate README figures from docs/data snapshots
+figures: ## Regenerate 15 industrial charts and README figures
 	python scripts/make_figures.py
 
 report: lint test figures ## Full local check: lint + tests + figures
