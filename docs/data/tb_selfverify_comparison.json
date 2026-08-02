@@ -1,0 +1,23 @@
+{
+  "n_shared_tasks": 10,
+  "pass_rate": {
+    "mean_delta": 0.0667,
+    "ci_low": -0.1,
+    "ci_high": 0.2667,
+    "n_tasks": 10
+  },
+  "cost": {
+    "mean_delta": -0.0028,
+    "ci_low": -0.0298,
+    "ci_high": 0.0231,
+    "n_tasks": 10,
+    "pct_change": -1.34
+  },
+  "steps": {
+    "mean_delta": -1.7333,
+    "ci_low": -3.3333,
+    "ci_high": -0.4,
+    "n_tasks": 10,
+    "pct_change": -6.94
+  }
+}

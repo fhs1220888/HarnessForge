@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "scorecard": "HarnessForge benchmark evidence",
+  "composite_score": null,
+  "composite_score_policy": "Intentionally omitted: capability, efficiency, durability, and evaluation cost have different denominators and failure consequences.",
+  "capability_external": {
+    "benchmark": "terminal-bench-2 / tb-subset",
+    "independent_grader": true,
+    "tasks": 20,
+    "repeats": 2,
+    "outcomes": {
+      "successes": 19,
+      "observations": 40,
+      "rate": 0.475,
+      "wilson_ci95": [
+        0.329352,
+        0.625029
+      ]
+    },
+    "infrastructure_errors": {
+      "successes": 0,
+      "observations": 40,
+      "rate": 0.0,
+      "wilson_ci95": [
+        0.0,
+        0.087625
+      ]
+    },
+    "budget_exhaustion": {
+      "successes": 36,
+      "observations": 40,
+      "rate": 0.9,
+      "wilson_ci95": [
+        0.769479,
+        0.960421
+      ]
+    },
+    "total_cost_usd": 10.38,
+    "cost_per_scored_run_usd": 0.2595,
+    "cost_per_pass_usd": 0.5463,
+    "evidence_grade": "external-benchmark"
+  },
+  "intervention_efficiency_external": {
+    "benchmark": "Terminal-Bench 2.0 high-signal paired subset",
+    "shared_tasks": 10,
+    "pass_rate_delta": {
+      "mean_delta": 0.0667,
+      "ci_low": -0.1,
+      "ci_high": 0.2667,
+      "n_tasks": 10
+    },
+    "step_delta": {
+      "mean_delta": -1.7333,
+      "ci_low": -3.3333,
+      "ci_high": -0.4,
+      "n_tasks": 10,
+      "pct_change": -6.94
+    },
+    "cost_delta_usd": {
+      "mean_delta": -0.0028,
+      "ci_low": -0.0298,
+      "ci_high": 0.0231,
+      "n_tasks": 10,
+      "pct_change": -1.34
+    },
+    "decision": "Step efficiency improved with CI excluding zero; no pass-rate or cost change was confirmed.",
+    "evidence_grade": "external-benchmark-paired"
+  },
+  "runtime_durability": {
+    "experiment": "live_controlled_process_crash_resume",
+    "controlled_process_exit_code": 86,
+    "recovery_passed": true,
+    "prefix_model_calls_reused": 2,
+    "prefix_model_calls_reissued": 0,
+    "prefix_tokens_reused": 2845,
+    "prefix_cost_reused_usd": 0.003621,
+    "checkpoint_write_p95_ms": 6.304,
+    "evidence_grade": "controlled-live-model-mechanism"
+  },
+  "evaluation_efficiency": {
+    "experiment": "live_multitask_same_prefix_benchmark",
+    "tasks": 5,
+    "continuation_tokens": 74662,
+    "full_rerun_tokens": 104969,
+    "token_savings": 30307,
+    "token_savings_fraction": 0.288723,
+    "cost_savings_usd": 0.037127,
+    "cost_savings_fraction": 0.288852,
+    "paired_token_delta": {
+      "mean_delta": -6061.4,
+      "ci_low": -8262.6,
+      "ci_high": -3920.6,
+      "n_tasks": 5,
+      "pct_change": -28.87
+    },
+    "outcome_agreement": {
+      "successes": 3,
+      "observations": 5,
+      "rate": 0.6,
+      "wilson_ci95": [
+        0.23072,
+        0.882382
+      ]
+    },
+    "evidence_grade": "paired-internal-mechanism"
+  },
+  "candidate_gate_case_study": {
+    "comparison": "paired-same-prefix-harness-candidates",
+    "tasks": 5,
+    "observed_control_pass_rate": 0.6,
+    "observed_treatment_pass_rate": 0.8,
+    "pass_rate_delta": {
+      "mean_delta": 0.2,
+      "ci_low": -0.4,
+      "ci_high": 0.8,
+      "n_tasks": 5
+    },
+    "mcnemar_exact": {
+      "control_only_passes": 1,
+      "treatment_only_passes": 2,
+      "discordant_pairs": 3,
+      "two_sided_p_value": 1.0
+    },
+    "token_delta": {
+      "mean_delta": 990.8,
+      "ci_low": 639.8,
+      "ci_high": 1339.8,
+      "n_tasks": 5,
+      "pct_change": 6.64
+    },
+    "cost_delta_usd": {
+      "mean_delta": 0.0013,
+      "ci_low": 0.0006,
+      "ci_high": 0.0021,
+      "n_tasks": 5,
+      "pct_change": 6.97
+    },
+    "decision": "reject",
+    "reason": "underpowered_or_no_confirmed_gain",
+    "evidence_grade": "paired-internal-gate-case-study"
+  },
+  "claim_policy": [
+    "External Terminal-Bench results are the capability headline.",
+    "Five-task native experiments support mechanism and gate-behavior claims only.",
+    "Confidence intervals and denominators accompany every reported rate or delta.",
+    "A directionally favorable but underpowered candidate is rejected, not promoted."
+  ]
+}

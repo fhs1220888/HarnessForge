@@ -55,6 +55,13 @@ def _task_arms(report: dict[str, Any], arm_name: str) -> dict[str, dict[str, Any
     return selected
 
 
+def _harness_version(arms: dict[str, dict[str, Any]]) -> str:
+    versions = {arm["harness_version"] for arm in arms.values()}
+    if len(versions) != 1:
+        raise ValueError(f"candidate report contains mixed harness versions: {versions}")
+    return versions.pop()
+
+
 def _validate_pair(control: dict[str, Any], treatment: dict[str, Any]) -> list[str]:
     if control["source_run"] != treatment["source_run"]:
         raise ValueError("reports use different source runs")
@@ -204,16 +211,18 @@ def compare_reports(
     return {
         "schema_version": 1,
         "comparison": "paired-same-prefix-harness-candidates",
-        "source_run": control["source_run"],
+        "source_run_id": Path(control["source_run"]).name,
         "task_ids": task_ids,
         "control": {
             "arm": control_name,
-            "harness_dir": control["candidates"][control_name],
+            "harness_dir": Path(control["candidates"][control_name]).name,
+            "harness_version": _harness_version(control_arms),
             "outcomes": _rate(control_passes, len(task_ids)),
         },
         "treatment": {
             "arm": treatment_name,
-            "harness_dir": treatment["candidates"][treatment_name],
+            "harness_dir": Path(treatment["candidates"][treatment_name]).name,
+            "harness_version": _harness_version(treatment_arms),
             "outcomes": _rate(treatment_passes, len(task_ids)),
         },
         "paired_analysis": {

@@ -19,6 +19,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .counterfactual import _write_json_atomic
 from .stats import paired_bootstrap_continuous, paired_bootstrap_delta
 
 SKIP = {"infra_error", "api_error"}
@@ -69,8 +70,16 @@ def main() -> None:
     ap.add_argument("--control", nargs="+", type=Path, required=True)
     ap.add_argument("--treatment", nargs="+", type=Path, required=True)
     ap.add_argument("--task-ids", nargs="*", default=None)
+    ap.add_argument("--out", type=Path, help="atomically write the structured report")
+    ap.add_argument("--json", action="store_true", help="print JSON instead of a table")
     args = ap.parse_args()
     res = compare(args.control, args.treatment, args.task_ids)
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        _write_json_atomic(args.out, res)
+    if args.json:
+        print(json.dumps(res, indent=2))
+        return
     print(f"\nPaired comparison on {res['n_shared_tasks']} shared tasks:")
     print(_fmt("pass rate", res["pass_rate"]))
     print(_fmt("cost", res["cost"], " $"))

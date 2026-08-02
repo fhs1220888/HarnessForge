@@ -28,6 +28,7 @@ def _report(name: str, outcomes: list[tuple[bool, int, float]]) -> dict:
                 "task_id": task_id,
                 "arms": [{
                     "name": name,
+                    "harness_version": f"{name}-version",
                     "fork": {
                         "passed": passed,
                         "exit_reason": "max_steps",

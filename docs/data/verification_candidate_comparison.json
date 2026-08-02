@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "comparison": "paired-same-prefix-harness-candidates",
+  "source_run_id": "multitask_source_20260802",
+  "task_ids": [
+    "t01_fix_off_by_one",
+    "t05_fix_regex",
+    "t09_fix_infinite_loop",
+    "t16_flatten_spec",
+    "t17_fix_csv_parser"
+  ],
+  "control": {
+    "arm": "baseline",
+    "harness_dir": "harness",
+    "harness_version": "cd2d29eae108",
+    "outcomes": {
+      "successes": 3,
+      "observations": 5,
+      "rate": 0.6,
+      "wilson_ci95": [
+        0.23072,
+        0.882382
+      ]
+    }
+  },
+  "treatment": {
+    "arm": "verification",
+    "harness_dir": "verification_discipline",
+    "harness_version": "577c5df078f8",
+    "outcomes": {
+      "successes": 4,
+      "observations": 5,
+      "rate": 0.8,
+      "wilson_ci95": [
+        0.375528,
+        0.963777
+      ]
+    }
+  },
+  "paired_analysis": {
+    "pass_rate_delta": {
+      "mean_delta": 0.2,
+      "ci_low": -0.4,
+      "ci_high": 0.8,
+      "n_tasks": 5
+    },
+    "mcnemar_exact": {
+      "control_only_passes": 1,
+      "treatment_only_passes": 2,
+      "discordant_pairs": 3,
+      "two_sided_p_value": 1.0
+    },
+    "continuation_token_delta": {
+      "mean_delta": 990.8,
+      "ci_low": 639.8,
+      "ci_high": 1339.8,
+      "n_tasks": 5,
+      "pct_change": 6.64
+    },
+    "continuation_cost_usd_delta": {
+      "mean_delta": 0.0013,
+      "ci_low": 0.0006,
+      "ci_high": 0.0021,
+      "n_tasks": 5,
+      "pct_change": 6.97
+    },
+    "step_delta": {
+      "mean_delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "n_tasks": 5,
+      "pct_change": 0.0
+    }
+  },
+  "verdict": {
+    "classification": "underpowered_or_no_confirmed_gain",
+    "quality_gain_confirmed": false,
+    "efficiency_gain_confirmed": false,
+    "note": "One continuation per task controls the prefix but remains a small stochastic sample; non-confirmation is not evidence of equivalence."
+  },
+  "per_task": [
+    {
+      "task_id": "t01_fix_off_by_one",
+      "outcome": {
+        "control_passed": true,
+        "treatment_passed": true,
+        "flip": "both_pass"
+      },
+      "control": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 12867,
+        "continuation_cost_usd": 0.014723
+      },
+      "treatment": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 13408,
+        "continuation_cost_usd": 0.015288
+      }
+    },
+    {
+      "task_id": "t05_fix_regex",
+      "outcome": {
+        "control_passed": false,
+        "treatment_passed": true,
+        "flip": "treatment_only"
+      },
+      "control": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 13765,
+        "continuation_cost_usd": 0.017113
+      },
+      "treatment": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 15109,
+        "continuation_cost_usd": 0.018237
+      }
+    },
+    {
+      "task_id": "t09_fix_infinite_loop",
+      "outcome": {
+        "control_passed": true,
+        "treatment_passed": false,
+        "flip": "control_only"
+      },
+      "control": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 14416,
+        "continuation_cost_usd": 0.01898
+      },
+      "treatment": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 15667,
+        "continuation_cost_usd": 0.020379
+      }
+    },
+    {
+      "task_id": "t16_flatten_spec",
+      "outcome": {
+        "control_passed": false,
+        "treatment_passed": true,
+        "flip": "treatment_only"
+      },
+      "control": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 12016,
+        "continuation_cost_usd": 0.01628
+      },
+      "treatment": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 12454,
+        "continuation_cost_usd": 0.016758
+      }
+    },
+    {
+      "task_id": "t17_fix_csv_parser",
+      "outcome": {
+        "control_passed": true,
+        "treatment_passed": true,
+        "flip": "both_pass"
+      },
+      "control": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 21598,
+        "continuation_cost_usd": 0.02431
+      },
+      "treatment": {
+        "exit_reason": "max_steps",
+        "steps": 8,
+        "continuation_tokens": 22978,
+        "continuation_cost_usd": 0.027118
+      }
+    }
+  ]
+}
