@@ -21,7 +21,12 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..agent.llm import LLMClient
+from ..agent.llm import (
+    LLMClient,
+    UnretryableLLMError,
+    configured_temperature,
+    pricing_revision,
+)
 from ..agent.loop import AgentLoop
 from ..agent.tools import ToolExecutor
 from ..config import HarnessConfig
@@ -30,7 +35,13 @@ import os
 from ..sandbox.tb_sandbox import TBSandbox
 from ..trace import TraceWriter
 from .persistence import ResultSink
-from .stats import RunManifest, suite_hash
+from .stats import (
+    RunManifest,
+    repository_is_dirty,
+    repository_revision,
+    suite_hash,
+    tree_hash,
+)
 from .tb_adapter import TBTask, load_subset
 
 
@@ -86,10 +97,17 @@ async def run_tb_task(task: TBTask, cfg: HarnessConfig, out_dir: Path, repeat: i
 
 async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurrency: int = 2,
                        subset: list[str] | None = None, max_steps: int = 25,
-                       harness_dir: Path | None = None, resume: bool = False) -> dict:
+                       harness_dir: Path | None = None, resume: bool = False,
+                       expected_tb_revision: str | None = None) -> dict:
     base = HarnessConfig.load(harness_dir) if harness_dir else HarnessConfig.load()
     cfg = _tb_budget_config(base, max_steps)
     tasks = load_subset(tb_root, subset)
+    tb_revision = repository_revision(tb_root)
+    if expected_tb_revision and not tb_revision.startswith(expected_tb_revision):
+        raise ValueError(
+            f"Terminal-Bench revision mismatch: expected {expected_tb_revision}, "
+            f"found {tb_revision}"
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     sink = ResultSink(out_dir, resume=resume)
@@ -106,7 +124,17 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
         suite_hash=suite_hash([t.task_id for t in tasks]),
         task_ids=[t.task_id for t in tasks],
         repeats=repeats, max_steps=max_steps,
-        extra={"harness_dir": str(harness_dir) if harness_dir else "harness/"},
+        temperature=configured_temperature(),
+        source_revision=repository_revision(Path(__file__).parents[3]),
+        source_dirty=repository_is_dirty(Path(__file__).parents[3]),
+        suite_content_hash=tree_hash([t.task_dir for t in tasks], tb_root),
+        pricing_revision=pricing_revision(),
+        extra={
+            "harness_dir": str(harness_dir) if harness_dir else "harness/",
+            "terminal_bench_revision": tb_revision,
+            "terminal_bench_expected_revision": expected_tb_revision,
+            "declared_docker_images": {t.task_id: t.docker_image for t in tasks},
+        },
     ).write(out_dir)
 
     sem = asyncio.Semaphore(concurrency)
@@ -117,6 +145,10 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
                 try:
                     sink.record(await run_tb_task(task, cfg, out_dir, r))
                     return
+                except UnretryableLLMError as e:
+                    print(f"[tb] {task.task_id} r{r} unretryable API failure: "
+                          f"{str(e)[:150]}", flush=True)
+                    break
                 except Exception as e:
                     print(f"[tb] {task.task_id} r{r} infra failure "
                           f"(attempt {attempt}/2): {type(e).__name__}: {str(e)[:150]}",
@@ -163,10 +195,13 @@ def main() -> None:
     ap.add_argument("--resume", action="store_true",
                     help="Continue a crashed run: keep completed outcomes in --out, "
                          "re-run only missing (task, repeat) pairs and infra failures")
+    ap.add_argument("--expected-tb-revision",
+                    help="Refuse to run unless the Terminal-Bench checkout matches this Git SHA")
     args = ap.parse_args()
     summary = asyncio.run(run_tb_suite(
         args.tb_root, args.out, args.repeats, args.concurrency,
-        args.subset, args.tb_max_steps, args.harness_dir, resume=args.resume))
+        args.subset, args.tb_max_steps, args.harness_dir, resume=args.resume,
+        expected_tb_revision=args.expected_tb_revision))
     print(json.dumps(summary, indent=2))
 
 

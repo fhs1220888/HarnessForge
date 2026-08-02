@@ -33,6 +33,17 @@ class TaskMemory:
     def __len__(self) -> int:
         return len(self._notes)
 
+    @classmethod
+    def restore(cls, notes: dict[str, str], max_notes: int = 20,
+                max_chars_per_note: int = 1000) -> "TaskMemory":
+        memory = cls(max_notes=max_notes, max_chars_per_note=max_chars_per_note)
+        for key, content in notes.items():
+            memory.write(key, content)
+        return memory
+
+    def snapshot(self) -> dict[str, str]:
+        return dict(self._notes)
+
     def write(self, key: str, content: str) -> str:
         """Store a note; return a confirmation the model can read."""
         extras = []

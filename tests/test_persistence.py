@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from harnessforge.agent.llm import UnretryableLLMError
 from harnessforge.eval import runner as runner_mod
 from harnessforge.eval.persistence import ResultSink
 from harnessforge.eval.runner import TaskOutcome, run_suite
@@ -91,7 +92,7 @@ class _CrashPlan:
 
 
 def _fake_run_one(plan: _CrashPlan):
-    async def fake(task, cfg, out_dir, repeat, sandbox_kind="docker"):
+    async def fake(task, cfg, out_dir, repeat, sandbox_kind="docker", resume=False):
         if (task.task_id, repeat) in plan.crash_on:
             raise _SimulatedCrash
         plan.calls.append((task.task_id, repeat))
@@ -137,3 +138,25 @@ async def test_resume_with_changed_harness_is_refused(tmp_path, monkeypatch):
                         task_ids=["t01_fix_off_by_one"], sandbox_kind="local",
                         resume=True)
     assert plan.calls == []  # refused before spending anything
+
+
+@pytest.mark.asyncio
+async def test_unretryable_api_error_does_not_retry_whole_task(tmp_path, monkeypatch):
+    calls = 0
+
+    async def fail_once(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise UnretryableLLMError("credit balance too low")
+
+    monkeypatch.setattr(runner_mod, "run_one", fail_once)
+    summary = await run_suite(
+        REPO / "tasks",
+        tmp_path / "run",
+        repeats=1,
+        concurrency=1,
+        task_ids=["t01_fix_off_by_one"],
+        sandbox_kind="local",
+    )
+    assert calls == 1
+    assert summary["exit_reasons"] == {"api_error": 1}

@@ -26,6 +26,10 @@ class EventType(str, Enum):
     TEST_RUN = "test_run"            # payload: command, passed, output (truncated)
     VALIDATION_ERROR = "validation_error"  # payload: tool, input, error (bad tool args, not executed)
     MEMORY_WRITE = "memory_write"    # payload: key, content (truncated), n_notes
+    CHECKPOINT = "checkpoint"        # payload: next_step, state counts, snapshot metrics
+    RESUME = "resume"                # payload: next_step and restored budget ledger
+    FORK = "fork"                    # payload: parent run/checkpoint/harness metadata
+    FAULT_INJECTED = "fault_injected"  # payload: committed step and explicit test mode
 
 
 # Exit reasons — the vocabulary weakness mining clusters over. Extend as needed.
@@ -64,7 +68,8 @@ class TraceEvent:
 class TraceWriter:
     """Appends one JSON object per line to <trace_dir>/<run_id>.jsonl."""
 
-    def __init__(self, trace_dir: Path, task_id: str, run_id: str | None = None):
+    def __init__(self, trace_dir: Path, task_id: str, run_id: str | None = None,
+                 resume: bool = False):
         self.run_id = run_id or f"{task_id}-{uuid.uuid4().hex[:8]}"
         self.task_id = task_id
         self.path = Path(trace_dir) / f"{self.run_id}.jsonl"
@@ -73,6 +78,15 @@ class TraceWriter:
         self.total_tokens_in = 0
         self.total_tokens_out = 0
         self.total_cost_usd = 0.0
+        if resume and self.path.exists():
+            events = load_trace(self.path)
+            if events:
+                self._step = max(event["step"] for event in events) + 1
+                self.total_tokens_in = sum(event.get("tokens_in", 0) for event in events)
+                self.total_tokens_out = sum(event.get("tokens_out", 0) for event in events)
+                self.total_cost_usd = sum(event.get("cost_usd", 0.0) for event in events)
+        elif not resume:
+            self.path.unlink(missing_ok=True)
 
     def emit(self, event_type: EventType, payload: dict[str, Any] | None = None,
              tokens_in: int = 0, tokens_out: int = 0, cost_usd: float = 0.0) -> TraceEvent:

@@ -72,6 +72,18 @@ def replay(path: Path, full: bool = False, color: bool = True) -> dict[str, Any]
         elif t == "compaction":
             print("  │ " + _c("dim", f"compaction {p.get('tokens_before')}→"
                                      f"{p.get('tokens_after')} tok", color))
+        elif t == "checkpoint":
+            print("  │ " + _c("dim", f"checkpoint next_step={p.get('next_step')} "
+                                     f"messages={p.get('n_messages')}", color))
+        elif t == "fork":
+            print("  │ " + _c("cyan", f"fork  step={p.get('checkpoint_step')} ", color)
+                  + _c("dim", f"parent={p.get('parent_run')}", color))
+        elif t == "resume":
+            print("  │ " + _c("green", f"resume step={p.get('next_step')} ", color)
+                  + _c("dim", f"snapshot={p.get('workspace_snapshot')}", color))
+        elif t == "fault_injected":
+            print("  │ " + _c("red", f"crash after checkpoint "
+                                      f"{p.get('after_checkpoint')}", color))
 
     if end:
         er = end["payload"].get("exit_reason", "?")

@@ -13,6 +13,7 @@ import hashlib
 import json
 import platform
 import random
+import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -102,6 +103,59 @@ def suite_hash(task_ids: list[str]) -> str:
     return hashlib.sha256("\x00".join(sorted(task_ids)).encode()).hexdigest()[:12]
 
 
+def tree_hash(roots: list[Path], base: Path) -> str:
+    """Hash task definitions and fixtures, independent of their absolute path."""
+    digest = hashlib.sha256()
+    base = Path(base).resolve()
+    files = sorted(
+        file
+        for root in roots
+        for file in Path(root).rglob("*")
+        if file.is_file() and "__pycache__" not in file.parts
+    )
+    for file in files:
+        resolved = file.resolve()
+        try:
+            label = resolved.relative_to(base).as_posix()
+        except ValueError:
+            label = resolved.name
+        digest.update(label.encode())
+        digest.update(b"\x00")
+        digest.update(resolved.read_bytes())
+        digest.update(b"\x00")
+    return digest.hexdigest()[:12]
+
+
+def repository_revision(path: Path) -> str:
+    """Best-effort Git revision for a source or benchmark checkout."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(Path(path).resolve()), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    return proc.stdout.strip() if proc.returncode == 0 else "unknown"
+
+
+def repository_is_dirty(path: Path) -> bool | None:
+    """Return whether tracked files differ from HEAD; None outside a Git repo."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(Path(path).resolve()), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return bool(proc.stdout.strip()) if proc.returncode == 0 else None
+
+
 @dataclass
 class RunManifest:
     benchmark: str
@@ -112,7 +166,14 @@ class RunManifest:
     task_ids: list[str]
     repeats: int
     max_steps: int
-    seed: int = 0
+    provider: str = "anthropic"
+    temperature: float | None = None
+    seed: int | None = None
+    max_output_tokens: int = 4096
+    source_revision: str = "unknown"
+    source_dirty: bool | None = None
+    suite_content_hash: str = ""
+    pricing_revision: str = ""
     started_at: float = field(default_factory=time.time)
     platform: str = field(default_factory=lambda: platform.platform())
     extra: dict[str, Any] = field(default_factory=dict)

@@ -1,7 +1,14 @@
+import json
+import subprocess
+
+from harnessforge.agent.llm import configured_temperature, pricing_revision
 from harnessforge.eval.stats import (
+    RunManifest,
     paired_bootstrap_continuous,
     paired_bootstrap_delta,
+    repository_is_dirty,
     suite_hash,
+    tree_hash,
     wilson_interval,
 )
 
@@ -58,3 +65,49 @@ def test_continuous_reports_pct_change():
 def test_suite_hash_order_invariant():
     assert suite_hash(["a", "b", "c"]) == suite_hash(["c", "a", "b"])
     assert suite_hash(["a", "b"]) != suite_hash(["a", "b", "c"])
+
+
+def test_tree_hash_tracks_fixture_content_not_absolute_parent(tmp_path):
+    left = tmp_path / "left"
+    right = tmp_path / "right"
+    for root in (left, right):
+        (root / "task" / "workspace").mkdir(parents=True)
+        (root / "task" / "task.yaml").write_text("prompt: test\n")
+        (root / "task" / "workspace" / "app.py").write_text("VALUE = 1\n")
+
+    original = tree_hash([left / "task"], left)
+    assert original == tree_hash([right / "task"], right)
+    (right / "task" / "workspace" / "app.py").write_text("VALUE = 2\n")
+    assert original != tree_hash([right / "task"], right)
+
+
+def test_sampling_and_pricing_provenance(monkeypatch):
+    monkeypatch.delenv("AGENT_TEMPERATURE", raising=False)
+    assert configured_temperature() is None
+    monkeypatch.setenv("AGENT_TEMPERATURE", "0.25")
+    assert configured_temperature() == 0.25
+    assert len(pricing_revision()) == 12
+
+
+def test_manifest_is_honest_about_unset_seed_and_temperature(tmp_path):
+    manifest = RunManifest(
+        benchmark="test",
+        harness_version="h1",
+        agent_model="model",
+        miner_model="miner",
+        suite_hash="s1",
+        task_ids=["task"],
+        repeats=1,
+        max_steps=3,
+    )
+    manifest.write(tmp_path)
+    data = json.loads((tmp_path / "manifest.json").read_text())
+    assert data["seed"] is None
+    assert data["temperature"] is None
+
+
+def test_repository_dirty_state_includes_untracked_runtime_files(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    assert repository_is_dirty(tmp_path) is False
+    (tmp_path / "new_runtime.py").write_text("VALUE = 1\n")
+    assert repository_is_dirty(tmp_path) is True
