@@ -247,8 +247,10 @@ across rounds so they aren't re-proposed (`selfharness/search.py`,
 
 ```bash
 pip install -e ".[dev]"
-cp .env.example .env            # add ANTHROPIC_API_KEY
-make test                      # mock-LLM end-to-end tests, no API cost
+make demo                       # offline evidence tour; no API key, network, or Docker
+make test                       # mock-LLM end-to-end tests, no API cost
+
+cp .env.example .env            # only needed for new live-model runs
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local
@@ -262,6 +264,9 @@ python -m harnessforge.eval.tb_runner --tb-root ~/terminal-bench-2 --out runs/tb
 python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
     --regression-tasks t01_fix_off_by_one t05_fix_regex --repeats 3
 ```
+
+Before tagging a release, run `make release-check`; the same offline demo is also a
+required CI step. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
 ## Task memory
 

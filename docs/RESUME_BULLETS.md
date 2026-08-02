@@ -7,7 +7,7 @@ evidence snapshots; keep the scope qualifiers when discussing them.
 
 - Built a durable, forkable coding-agent runtime with atomic turn checkpoints,
   versioned workspace snapshots, rollback, provenance guards, trace replay, and
-  same-prefix counterfactual evaluation; covered by 104 deterministic tests.
+  same-prefix counterfactual evaluation; covered by 107 deterministic tests.
 - Evaluated the harness on 40 independently graded Terminal-Bench 2.0 runs:
   47.5% pass rate (Wilson 95% CI 32.9–62.5%), zero infrastructure errors, and
   $0.2595 per scored run; published a denominator-checked four-axis scorecard.
