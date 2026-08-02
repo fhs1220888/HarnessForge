@@ -90,12 +90,28 @@ class Sandbox:
             raise RuntimeError(f"write failed: {err.decode(errors='replace')}")
 
     async def apply_patch(self, patch: str) -> ExecResult:
-        """Atomic-ish: dry-run first, only apply if the whole patch applies."""
+        """Dry-run every hunk, accepting git-style or plain diff paths."""
         await self.write_file("/tmp/_hforge.patch", patch)
-        dry = await self.run("patch -p1 --dry-run -d /workspace < /tmp/_hforge.patch")
-        if dry.exit_code != 0:
-            return ExecResult("", f"patch does not apply cleanly:\n{dry.stdout}{dry.stderr}", 1, dry.duration_s)
-        return await self.run("patch -p1 -d /workspace < /tmp/_hforge.patch")
+        failures = []
+        duration_s = 0.0
+        for strip in (1, 0):
+            dry = await self.run(
+                f"patch -p{strip} --dry-run -d /workspace < /tmp/_hforge.patch"
+            )
+            duration_s += dry.duration_s
+            if dry.exit_code == 0:
+                applied = await self.run(
+                    f"patch -p{strip} -d /workspace < /tmp/_hforge.patch"
+                )
+                applied.duration_s += duration_s
+                return applied
+            failures.append(f"-p{strip}:\n{dry.stdout}{dry.stderr}")
+        return ExecResult(
+            "",
+            "patch does not apply cleanly:\n" + "\n".join(failures),
+            1,
+            duration_s,
+        )
 
     async def __aenter__(self) -> "Sandbox":
         await self.start()

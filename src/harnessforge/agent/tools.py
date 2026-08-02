@@ -63,8 +63,18 @@ class ToolExecutor:
     async def _tool_apply_patch(self, inp: dict[str, Any]) -> ToolResult:
         # Atomic: sandbox.apply_patch must roll back on any hunk failure.
         res = await self.sandbox.apply_patch(inp["patch"])
-        return ToolResult(output=res.stdout or "Patch applied.",
-                          exit_code=res.exit_code, error=res.exit_code != 0)
+        failed = res.exit_code != 0
+        if failed:
+            output = res.stdout + (("\n[stderr]\n" + res.stderr) if res.stderr else "")
+            output = output.strip() or "Patch failed."
+        else:
+            output = res.stdout or "Patch applied."
+        return ToolResult(
+            output=output,
+            exit_code=res.exit_code,
+            error=failed,
+            duration_s=res.duration_s,
+        )
 
     async def _tool_memory_write(self, inp: dict[str, Any]) -> ToolResult:
         # Handled by the loop (writes to TaskMemory, never reaches the sandbox);

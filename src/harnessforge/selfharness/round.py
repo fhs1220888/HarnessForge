@@ -25,12 +25,13 @@ import asyncio
 import json
 from pathlib import Path
 
+from ..config import HARNESS_DIR, HarnessConfig
 from ..eval.runner import run_suite
 from .mining import mine
 from .proposal import generate
 from .schema import ProposalMemory
 from .search import record_losers, select_best_per_group
-from .validation import validate
+from .validation import promote_proposal, validate
 
 
 async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
@@ -66,28 +67,51 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
     print(f"[round] {len(proposals)} candidate proposals pass pre-validation "
           f"({len({p.candidate_group for p in proposals})} patterns)")
 
-    # 4. Validation gate, sequentially (each accepted change shifts the baseline).
-    verdicts = []
+    # 4. Validate sibling candidates against the SAME immutable parent revision.
+    # Promote only the best accepted candidate in each pattern group; the next
+    # group then starts from that promoted revision so improvements can compound.
+    grouped: dict[str, list] = {}
     for prop in proposals:
-        print(f"[round] validating {prop.proposal_id} -> {prop.component} "
-              f"({prop.failure_pattern})")
-        try:
-            verdict = await validate(prop, baseline_dir, regression_tasks,
-                                     tasks_root, out_dir / "validation", repeats=repeats,
-                                     sandbox_kind=sandbox_kind)
-        except Exception as e:
-            # e.g. an earlier accepted proposal changed the same component and
-            # this diff no longer applies. Record and move on — never lose the round.
-            from .validation import ValidationVerdict
-            verdict = ValidationVerdict(prop.proposal_id, False, 0.0, 0, 0.0,
-                                        notes=f"validation error: {type(e).__name__}: {e}")
-            prop.accepted = False
-            prop.validation_notes = verdict.notes
-        verdicts.append(verdict)
-        print(f"[round]   {'ACCEPT' if verdict.accepted else 'reject'}: {prop.validation_notes}")
+        grouped.setdefault(prop.candidate_group or prop.proposal_id, []).append(prop)
 
-    # 4b. Keep the best candidate per pattern; fold the rest into memory.
-    winners, losers = select_best_per_group(proposals)
+    verdicts = []
+    winners = []
+    losers = []
+    for group, candidates in grouped.items():
+        parent_version = HarnessConfig.load(HARNESS_DIR).version
+        print(f"[round] candidate group {group}: {len(candidates)} siblings "
+              f"from parent {parent_version}")
+        for prop in candidates:
+            print(f"[round] validating {prop.proposal_id} -> {prop.component} "
+                  f"({prop.failure_pattern})")
+            try:
+                verdict = await validate(
+                    prop, baseline_dir, regression_tasks,
+                    tasks_root, out_dir / "validation", repeats=repeats,
+                    sandbox_kind=sandbox_kind, base_harness_dir=HARNESS_DIR,
+                )
+            except Exception as e:
+                from .validation import ValidationVerdict
+                verdict = ValidationVerdict(
+                    prop.proposal_id, False, 0.0, 0, 0.0,
+                    notes=f"validation error: {type(e).__name__}: {e}",
+                )
+                prop.accepted = False
+                prop.validation_notes = verdict.notes
+            verdicts.append(verdict)
+            print(f"[round]   {'eligible' if verdict.accepted else 'reject'}: "
+                  f"{prop.validation_notes}")
+
+        group_winners, group_losers = select_best_per_group(candidates)
+        if group_winners:
+            winner = group_winners[0]
+            promote_proposal(winner, HARNESS_DIR)
+            winners.append(winner)
+            print(f"[round] promoted {winner.proposal_id}; "
+                  f"harness={HarnessConfig.load(HARNESS_DIR).version}")
+        losers.extend(group_losers)
+
+    # 4b. Fold every rejected/also-ran candidate into cross-round memory.
     record_losers(memory, losers)
     print(f"[round] {len(winners)} winners, {len(losers)} recorded as memory "
           f"({len(memory.rejected)} total dead ends known)")

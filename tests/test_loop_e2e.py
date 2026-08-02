@@ -7,6 +7,7 @@ No API calls, no Docker. Verifies:
 """
 
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -116,6 +117,21 @@ async def test_malformed_tool_args_rejected_then_recovers(tmp_path):
                  and e["payload"].get("tool") == "bash"
                  and "command" not in e["payload"].get("input", {})]
     assert bad_calls == []
+
+
+@pytest.mark.asyncio
+async def test_local_sandbox_exposes_current_python_as_python(tmp_path):
+    """Local runs must use the interpreter that launched HarnessForge.
+
+    This protects macOS environments that provide `python3` but no global
+    `python`, and direct `.venv/bin/pytest` invocations that do not activate PATH.
+    """
+    async with LocalSandbox(tmp_path) as sandbox:
+        result = await sandbox.run(
+            "python -c 'import pathlib,sys; print(pathlib.Path(sys.executable).resolve())'"
+        )
+    assert result.exit_code == 0, result.stderr
+    assert Path(result.stdout.strip()).resolve() == Path(sys.executable).resolve()
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,10 @@ CI without Docker, and trusted smoke runs. The eval runner selects it via
 from __future__ import annotations
 
 import asyncio
+import os
+import re
 import shlex
+import sys
 import time
 from pathlib import Path
 
@@ -28,11 +31,28 @@ class LocalSandbox:
     async def run(self, command: str, timeout_s: float = 60) -> ExecResult:
         # Task checks and prompts are written against the Docker layout where the
         # workspace is mounted at /workspace. Map that path onto the local dir.
-        command = command.replace("/workspace", str(self.workspace))
+        # Match a shell path token, not the same substring inside an already
+        # expanded host path such as ".../workspaces/...".
+        command = re.sub(
+            r"(?<![\w./-])/workspace(?=$|[^\w.-])",
+            lambda _match: str(self.workspace),
+            command,
+        )
         t0 = time.monotonic()
+        # A direct invocation such as `.venv/bin/pytest` does not activate that
+        # virtualenv for child processes. Put the interpreter that is running
+        # HarnessForge first on PATH so task commands using the conventional
+        # `python` name resolve consistently on macOS, Linux, and CI.
+        env = os.environ.copy()
+        # Do not resolve the executable symlink: in a virtualenv it intentionally
+        # points at the base interpreter while its *unresolved* parent contains
+        # the environment's installed console scripts and site configuration.
+        python_bin = str(Path(sys.executable).parent)
+        env["PATH"] = python_bin + os.pathsep + env.get("PATH", "")
         proc = await asyncio.create_subprocess_exec(
-            "bash", "-lc", command,
+            "bash", "-c", command,
             cwd=self.workspace,
+            env=env,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         try:
@@ -54,7 +74,7 @@ class LocalSandbox:
             except ValueError:
                 raise PermissionError(f"path outside workspace: {path}")
         resolved = (self.workspace / p).resolve()
-        if not str(resolved).startswith(str(self.workspace)):
+        if not resolved.is_relative_to(self.workspace):
             raise PermissionError(f"path escapes workspace: {path}")
         return resolved
 
@@ -70,11 +90,29 @@ class LocalSandbox:
         patch_file = self.workspace / "_hforge.patch"
         patch_file.write_text(patch, encoding="utf-8")
         try:
-            dry = await self.run(f"patch -p1 --dry-run < {shlex.quote(patch_file.name)}")
-            if dry.exit_code != 0:
-                return ExecResult("", f"patch does not apply cleanly:\n{dry.stdout}{dry.stderr}",
-                                  1, dry.duration_s)
-            return await self.run(f"patch -p1 < {shlex.quote(patch_file.name)}")
+            failures = []
+            duration_s = 0.0
+            # Models commonly emit either git-style a/file headers (-p1) or
+            # plain file headers (-p0). Accept both while retaining the
+            # all-hunks dry-run gate.
+            for strip in (1, 0):
+                dry = await self.run(
+                    f"patch -p{strip} --dry-run < {shlex.quote(patch_file.name)}"
+                )
+                duration_s += dry.duration_s
+                if dry.exit_code == 0:
+                    applied = await self.run(
+                        f"patch -p{strip} < {shlex.quote(patch_file.name)}"
+                    )
+                    applied.duration_s += duration_s
+                    return applied
+                failures.append(f"-p{strip}:\n{dry.stdout}{dry.stderr}")
+            return ExecResult(
+                "",
+                "patch does not apply cleanly:\n" + "\n".join(failures),
+                1,
+                duration_s,
+            )
         finally:
             patch_file.unlink(missing_ok=True)
 
