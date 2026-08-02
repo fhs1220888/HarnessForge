@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "experiment": "live_multitask_same_prefix_benchmark",
+  "date": "2026-08-02",
+  "status": "five_task_mechanism_benchmark",
+  "model": "claude-haiku-4-5-20251001",
+  "harness_version": "cd2d29eae108",
+  "source_revision": "fb30046276f420346697bb177cddf8e12ce27f8a",
+  "source_dirty": false,
+  "suite_hash": "a9f2cea0bbe0",
+  "suite_content_hash": "81804656cba1",
+  "pricing_revision": "fc7c7c320d7d",
+  "sandbox": "local",
+  "design": {
+    "tasks": [
+      "t01_fix_off_by_one",
+      "t05_fix_regex",
+      "t09_fix_infinite_loop",
+      "t16_flatten_spec",
+      "t17_fix_csv_parser"
+    ],
+    "candidate": "baseline",
+    "full_rerun_control": true,
+    "checkpoint_rule": "first eligible non-terminal step >= ceil(last_eligible_step * 0.5)",
+    "selected_step": 4,
+    "last_eligible_step": 7,
+    "max_steps": 8,
+    "repeats": 1,
+    "soft_incremental_cost_cap_usd": 0.3
+  },
+  "per_task": [
+    {
+      "task_id": "t01_fix_off_by_one",
+      "prefix_tokens": 7878,
+      "fork_passed": true,
+      "full_rerun_passed": true,
+      "continuation_tokens": 12867,
+      "full_rerun_tokens": 15674,
+      "token_savings": 2807,
+      "continuation_cost_usd": 0.014723,
+      "full_rerun_cost_usd": 0.019598
+    },
+    {
+      "task_id": "t05_fix_regex",
+      "prefix_tokens": 6949,
+      "fork_passed": false,
+      "full_rerun_passed": true,
+      "continuation_tokens": 13765,
+      "full_rerun_tokens": 23205,
+      "token_savings": 9440,
+      "continuation_cost_usd": 0.017113,
+      "full_rerun_cost_usd": 0.028177
+    },
+    {
+      "task_id": "t09_fix_infinite_loop",
+      "prefix_tokens": 7368,
+      "fork_passed": true,
+      "full_rerun_passed": true,
+      "continuation_tokens": 14416,
+      "full_rerun_tokens": 19483,
+      "token_savings": 5067,
+      "continuation_cost_usd": 0.01898,
+      "full_rerun_cost_usd": 0.023779
+    },
+    {
+      "task_id": "t16_flatten_spec",
+      "prefix_tokens": 7029,
+      "fork_passed": false,
+      "full_rerun_passed": true,
+      "continuation_tokens": 12016,
+      "full_rerun_tokens": 20548,
+      "token_savings": 8532,
+      "continuation_cost_usd": 0.01628,
+      "full_rerun_cost_usd": 0.026748
+    },
+    {
+      "task_id": "t17_fix_csv_parser",
+      "prefix_tokens": 10076,
+      "fork_passed": true,
+      "full_rerun_passed": true,
+      "continuation_tokens": 21598,
+      "full_rerun_tokens": 26059,
+      "token_savings": 4461,
+      "continuation_cost_usd": 0.02431,
+      "full_rerun_cost_usd": 0.030231
+    }
+  ],
+  "aggregate": {
+    "tasks": 5,
+    "fork_passes": 3,
+    "full_rerun_passes": 5,
+    "outcome_agreement_count": 3,
+    "outcome_agreement_rate": 0.6,
+    "outcome_agreement_wilson_ci95": [0.23072, 0.882382],
+    "continuation_tokens": 74662,
+    "continuation_cost_usd": 0.091406,
+    "full_rerun_tokens": 104969,
+    "full_rerun_cost_usd": 0.128533,
+    "reused_prefix_tokens": 39300,
+    "reused_prefix_cost_usd": 0.047824,
+    "token_savings": 30307,
+    "token_savings_fraction": 0.288723,
+    "cost_savings_usd": 0.037127,
+    "cost_savings_fraction": 0.288852,
+    "paired_continuation_minus_full_tokens": {
+      "mean_delta": -6061.4,
+      "ci_low": -8262.6,
+      "ci_high": -3920.6,
+      "n_tasks": 5,
+      "pct_change": -28.87
+    },
+    "paired_continuation_minus_full_cost_usd": {
+      "mean_delta": -0.0074,
+      "ci_low": -0.0098,
+      "ci_high": -0.0051,
+      "n_tasks": 5,
+      "pct_change": -28.89
+    },
+    "source_run_tokens": 115717,
+    "source_run_cost_usd": 0.143021,
+    "incremental_evaluation_cost_usd": 0.219939,
+    "end_to_end_experiment_cost_usd": 0.36296
+  },
+  "interpretation": [
+    "Across five paired tasks, fork continuations used 28.9% fewer tokens and cost 28.9% less than independent full reruns.",
+    "The paired bootstrap intervals for continuation-minus-full token and cost deltas exclude zero on this five-task sample.",
+    "Fork and full-rerun grader outcomes agreed on only three of five tasks, so prefix forks are a cheaper screening and diagnosis mechanism, not a substitute for powered evaluation.",
+    "The experiment uses one stochastic observation per task and local trusted sandbox mode; it does not estimate a pass-rate improvement or a production isolation guarantee."
+  ]
+}

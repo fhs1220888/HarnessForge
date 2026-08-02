@@ -211,7 +211,40 @@ confirmed result — not worth the API spend for a portfolio artifact. The machi
 ready to run when justified; this repo prioritizes confirmed results (the −6.9% step
 reduction) over an underpowered trajectory chart.
 
-### Live same-prefix durability pilot (2026-07-30)
+### Multi-task same-prefix benchmark (2026-08-02)
+
+The earlier t17 run established the mechanism but could not support an aggregate
+cost claim. The new resumable coordinator applied the same protocol to five native
+tasks. Every source trajectory ran under the baseline harness and 8-step budget; a
+predeclared rule selected the first non-terminal checkpoint at or beyond half of the
+last eligible step. This selected step 4 of 7 for all five tasks. Each checkpoint
+then produced one baseline continuation and one independent full-rerun control.
+
+| Metric | Fork continuation | Full rerun | Difference |
+|---|---:|---:|---:|
+| Tokens | 74,662 | 104,969 | **−30,307 (−28.9%)** |
+| Cost | $0.091406 | $0.128533 | **−$0.037127 (−28.9%)** |
+| Grader passes | 3/5 | 5/5 | descriptive only; n=5 |
+
+The paired task bootstrap gives a mean continuation-minus-full token delta of
+−6,061 per task, 95% interval **[−8,263, −3,921]**; cost delta is −$0.0074,
+interval **[−$0.0098, −$0.0051]**. Both exclude zero on this sample. The source
+trajectories themselves cost $0.143021, so total end-to-end experiment cost was
+$0.362960; the $0.219939 incremental-evaluation figure deliberately excludes no
+paid evaluation arm, only separating source generation for reuse accounting.
+
+Outcome agreement was only **3/5** (Wilson interval [0.231, 0.882]). This repeats
+the earlier warning with a broader sample: exact-prefix evaluation controls history
+and cuts incremental screening cost, but stochastic continuations are not
+interchangeable with fresh runs. The defensible claim is the paired efficiency
+result, not a pass-rate lift or evaluation replacement. Evidence:
+[`docs/data/durable_counterfactual_multitask.json`](docs/data/durable_counterfactual_multitask.json).
+
+Implementation details matter for spend safety: the coordinator writes its report
+atomically after every task, `--resume` reuses completed arms and partial agent
+checkpoints, and `--max-new-cost-usd` is a soft cap checked between tasks.
+
+### Earlier one-task same-prefix durability pilot (2026-07-30)
 
 This is a **mechanism/cost case study on one task**, not an estimate of general
 harness quality. A failed baseline trajectory on `t17_fix_csv_parser` was committed

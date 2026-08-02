@@ -1,21 +1,22 @@
 # Resume-ready project framing
 
 Use two bullets, not all of them. The numbers below are backed by checked-in
-evidence snapshots; keep the single-task qualifiers when discussing them.
+evidence snapshots; keep the scope qualifiers when discussing them.
 
 ## Recommended English bullets
 
 - Built a durable, forkable coding-agent runtime with atomic turn checkpoints,
   versioned workspace snapshots, rollback, provenance guards, trace replay, and
-  same-prefix counterfactual evaluation; covered by 96 deterministic tests.
+  same-prefix counterfactual evaluation; covered by 100 deterministic tests.
 - Ran a controlled live-model process-crash drill that resumed from checkpoint
   without replaying a 2-call, 2,845-token paid prefix, then completed successfully
   against an independent grader; observed 6.3 ms checkpoint-write p95 over eight
   local snapshots.
-- Designed a same-prefix harness screening experiment that reduced incremental
-  continuation usage by 9,438 tokens (24.5%) and cost by 23.6% versus independent
-  full reruns in a one-task pilot, while explicitly measuring only 1/2 outcome
-  agreement and documenting stochasticity/tooling confounds.
+- Built a resumable multi-task counterfactual benchmark that atomically persists
+  completed arms and separates source, reused-prefix, continuation, and full-control
+  spend; across five live-model tasks, fork continuations used 30,307 fewer tokens
+  (28.9%, paired CI for the mean delta excluded zero) while outcome agreement was
+  only 3/5, demonstrating cheaper screening without claiming evaluation equivalence.
 
 ## Short project description
 
@@ -26,8 +27,8 @@ episodes can be resumed or forked from an exact committed model/workspace state.
 
 ## Interview guardrails
 
-- The 24.5% token reduction is a one-task mechanism/cost pilot, not a population
-  estimate or a claimed pass-rate lift.
+- The 28.9% reduction is a five-task, one-observation-per-task mechanism/cost
+  benchmark, not a population estimate or a claimed pass-rate lift.
 - The 6.3 ms p95 covers eight tiny local workspace snapshots, not a production SLO.
 - Native episodes are resumable; Terminal-Bench container snapshots and exactly-once
   external side effects remain explicit follow-up work.
@@ -38,4 +39,5 @@ episodes can be resumed or forked from an exact committed model/workspace state.
 
 - Crash/recovery drill: `docs/data/durable_recovery_t01.json`
 - Same-prefix pilot: `docs/data/durable_counterfactual_t17.json`
+- Multi-task same-prefix benchmark: `docs/data/durable_counterfactual_multitask.json`
 - Aggregate experiments and caveats: `EXPERIMENTS.md`

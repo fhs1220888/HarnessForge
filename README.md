@@ -29,7 +29,7 @@ recovery, and feedback loops — not prompt tricks.
 |---|---:|---|
 | Terminal-Bench 2.0 subset | **19/40 pass (47.5%)** | 20 pinned external tasks × 2 |
 | selfverify intervention | **−6.9% steps**, 95% CI [−13.3%, −1.6%] | paired aggregate experiment |
-| same-prefix candidate screening | **−9,438 tokens (24.5%)**, −23.6% cost | one-task mechanism pilot |
+| same-prefix candidate screening | **−28.9% tokens/cost**, paired CI excludes 0 | 5-task mechanism benchmark |
 | controlled process crash | **2,845 paid tokens restored**, grader 2/2 | one-task recovery drill |
 
 The last two rows are explicitly mechanism checks, not population-level quality
@@ -181,6 +181,13 @@ python -m harnessforge.eval.counterfactual \
     --candidate selfverify=harness_selfverify
 # add --include-full-rerun only when you intend the extra API spend
 
+# aggregate the same protocol across tasks; each completed arm is resumable
+python -m harnessforge.eval.multitask_counterfactual \
+    --source-run runs/source --out runs/multitask-counterfactual \
+    --task-ids t01_fix_off_by_one t05_fix_regex t09_fix_infinite_loop \
+    --candidate baseline=harness --checkpoint-fraction 0.5 --sandbox local \
+    --include-full-rerun --max-new-cost-usd 0.30
+
 # controlled process-exit drill (single native task/repeat, concurrency=1)
 python -m harnessforge.eval.runner --tasks tasks --out runs/chaos \
     --task-ids t01_fix_off_by_one --concurrency 1 --sandbox local \
@@ -189,8 +196,23 @@ python -m harnessforge.eval.runner --tasks tasks --out runs/chaos \
     --task-ids t01_fix_off_by_one --concurrency 1 --sandbox local --resume
 ```
 
-**Live durability pilot (one task; mechanism check, not an aggregate quality
-claim).** On `t17_fix_csv_parser`, two candidates forked from the same step-5
+**Live multi-task same-prefix benchmark (mechanism/cost evidence, not a quality
+claim).** Five baseline trajectories were checkpointed under an 8-step budget. A
+declared rule selected step 4—the first non-terminal checkpoint at or beyond 50%
+of each trajectory's last eligible step—before any continuation outcome was seen.
+Each prefix then produced one fork continuation and one independent full-rerun
+control. Forks used **74,662 tokens / $0.091406** versus **104,969 / $0.128533**:
+**30,307 fewer tokens (28.9%) and $0.037127 less (28.9%)**. The paired per-task
+continuation-minus-full token interval was **[−8,263, −3,921]**, excluding zero.
+
+Grader outcomes agreed on only **3/5** tasks, which is an equally important result:
+same-prefix forks make candidate screening cheaper and better controlled, but do
+not replace full repeated evaluation. End-to-end accounting includes the $0.143021
+source run as well as both evaluation arms ($0.362960 total). Auditable,
+path-sanitized evidence:
+[`docs/data/durable_counterfactual_multitask.json`](docs/data/durable_counterfactual_multitask.json).
+
+**Earlier one-task diagnostic pilot.** On `t17_fix_csv_parser`, two candidates forked from the same step-5
 checkpoint used 29,140 continuation tokens versus 38,578 tokens for two independent
 full reruns: **9,438 fewer tokens (24.5%) and $0.01055 less (23.6%)**. One fork
 produced a grader-passing workspace while both full reruns failed, so outcome
