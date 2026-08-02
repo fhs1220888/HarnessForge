@@ -18,6 +18,9 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Lint
         run: ruff check src tests
+      - name: Offline evidence demo
+        # Rebuilds the scorecard from checked-in evidence and fails on metric drift.
+        run: python -m harnessforge.demo
       - name: Test
         # Unit tests + mock-LLM end-to-end loops. No API key, Docker, or API cost.
         run: pytest -q
