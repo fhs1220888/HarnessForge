@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "experiment": "live_controlled_process_crash_resume",
+  "date": "2026-07-30",
+  "status": "single_task_recovery_mechanism_check",
+  "model": "claude-haiku-4-5-20251001",
+  "harness_version": "f325df98ab59",
+  "task_id": "t01_fix_off_by_one",
+  "sandbox": "local",
+  "fault": {
+    "after_checkpoint": 2,
+    "process_exit_code": 86,
+    "checkpoint_next_step": 2,
+    "checkpoint_messages": 5,
+    "prefix_model_calls": 2,
+    "prefix_tokens_in": 2651,
+    "prefix_tokens_out": 194,
+    "prefix_tokens": 2845,
+    "prefix_cost_usd": 0.003621,
+    "workspace_snapshot": "step-0002"
+  },
+  "recovery": {
+    "run_start_events": 1,
+    "fault_injected_events": 1,
+    "resume_events": 1,
+    "resumed_at_step": 2,
+    "reissued_prefix_model_calls": 0
+  },
+  "final": {
+    "passed": true,
+    "grader": "2/2",
+    "exit_reason": "finished_done",
+    "steps": 7,
+    "model_calls": 7,
+    "tokens_in": 14719,
+    "tokens_out": 932,
+    "tokens": 15651,
+    "cost_usd": 0.019379,
+    "checkpoint_next_step": 7,
+    "checkpoint_messages": 15,
+    "checkpoint_last_role": "user",
+    "checkpoint_matches_final_result": true
+  },
+  "checkpoint_metrics": {
+    "count": 8,
+    "latency_ms": {
+      "p50": 2.864,
+      "p95": 6.304,
+      "max": 6.304
+    },
+    "snapshot_bytes": {
+      "p50": 2879,
+      "p95": 2894,
+      "max": 2894
+    }
+  },
+  "additional_observation": {
+    "plain_path_apply_patch_used": true,
+    "patch_applied": true,
+    "tests_after_patch_passed": true
+  },
+  "interpretation": [
+    "The native runtime preserved and reused two paid model calls across a controlled process exit.",
+    "No second run_start or replay of the two-call prefix occurred.",
+    "The completed checkpoint and final result have identical step, token, and cost ledgers.",
+    "The latency numbers are eight local tiny-snapshot observations, not a production SLO."
+  ]
+}

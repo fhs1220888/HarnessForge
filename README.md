@@ -1,15 +1,69 @@
 # HarnessForge
 
-**A self-evolving coding-agent harness lab.** It runs an LLM agent against coding
-tasks, mines failure patterns from execution traces, proposes *harness-level* changes
-with predicted effects, and merges them only after a noise-aware regression gate —
-then measures whether the change actually helped on an external benchmark.
+**A durable, forkable, self-evolving coding-agent harness.** HarnessForge runs
+coding agents under explicit step/token/cost budgets, commits model and workspace
+state at turn boundaries, resumes or forks exact prefixes, and measures harness
+changes behind an independent regression gate.
 
 Built to practice [harness engineering](https://martinfowler.com/articles/harness-engineering.html):
 making non-deterministic agent systems reliable through constraints, observability,
-and feedback loops — not prompt tricks.
+recovery, and feedback loops — not prompt tricks.
 
 ![CI](https://github.com/fhs1220888/HarnessForge/actions/workflows/ci.yml/badge.svg)
+
+---
+
+## What is built
+
+- **Durable episodes:** atomic checkpoints contain messages, memory, termination
+  guards, and the token/cost ledger; versioned workspace snapshots support rollback.
+- **Exact-prefix experiments:** any historical checkpoint can be forked into
+  isolated candidate runs, optionally under a different harness revision.
+- **Measured self-improvement:** trace mining proposes declarative harness changes;
+  immutable sibling candidates face paired target/regression evaluation before one
+  winner can be promoted.
+- **Auditable execution:** JSONL traces, replay, independent graders, provenance-rich
+  manifests, truthful tool errors, and fail-fast permanent API failures.
+
+| Evidence | Observed result | Scope |
+|---|---:|---|
+| Terminal-Bench 2.0 subset | **19/40 pass (47.5%)** | 20 pinned external tasks × 2 |
+| selfverify intervention | **−6.9% steps**, 95% CI [−13.3%, −1.6%] | paired aggregate experiment |
+| same-prefix candidate screening | **−9,438 tokens (24.5%)**, −23.6% cost | one-task mechanism pilot |
+| controlled process crash | **2,845 paid tokens restored**, grader 2/2 | one-task recovery drill |
+
+The last two rows are explicitly mechanism checks, not population-level quality
+estimates. See [EXPERIMENTS.md](EXPERIMENTS.md) for statistical and tooling caveats.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    I["Task + harness revision"] --> L["Budgeted agent loop"]
+    L <--> M["LLM"]
+    L --> V["Schema-validated tools"]
+    V --> S["Docker / local sandbox"]
+    S --> W[("Task workspace")]
+
+    L --> C[("Atomic episode checkpoint")]
+    C --> H[("Historical messages + memory + budget")]
+    C --> P[("Versioned workspace snapshot")]
+    C -.->|resume + rollback| L
+    C -.->|fork exact prefix| F["Isolated candidate continuations"]
+
+    L --> T[("JSONL trace")]
+    F --> G["Independent grader"]
+    T --> N["Failure mining"]
+    N --> Q["Declarative proposals"]
+    Q --> E["Paired target + regression gate"]
+    G --> E
+    E -.->|promote one winner| I
+```
+
+The critical invariant is that a checkpoint becomes resumable only after its
+workspace snapshot and state ledger are committed. Forks copy that immutable state;
+ordinary resume rejects prompt or harness drift. Detailed failure boundaries and
+commit sequence: [Architecture notes](docs/ARCHITECTURE.md).
 
 ---
 
@@ -76,21 +130,6 @@ number carries a bootstrap or Wilson interval.
 
 ## How it works
 
-```
-        ┌──────────────┐   traces    ┌─────────────────┐   patterns   ┌──────────────┐
-  tasks │  eval runner │────────────▶│ weakness mining │─────────────▶│   proposal   │
-   ─────▶ (agent loop, │  JSONL      │  (cluster fails │              │  generation  │
-        │  sandbox)    │             │   from traces)  │              │ (component   │
-        └──────▲───────┘             └─────────────────┘              │  diffs +     │
-               │                                                      │  prediction) │
-               │  merge if effect ≥ threshold & no regression         └──────┬───────┘
-               │                                                             │
-        ┌──────┴───────────────────────────────────────────────────────────▼──────┐
-        │  validation gate: paired before/after on targeted + regression tasks,     │
-        │  backfill observed effect  →  proposal calibration table                  │
-        └───────────────────────────────────────────────────────────────────────────┘
-```
-
 The **agent loop** (`src/harnessforge/agent/loop.py`) is a from-scratch plan → tool-call
 → observation loop with retries, termination heuristics, context compaction, and a
 budget guard. Tools: `bash`, `read_file`, `write_file`, `apply_patch`, `memory_write`,
@@ -106,29 +145,76 @@ with tokens, cost, and exit reason — mining, replay, and reporting all read th
 harness/                 evolvable components (the "genome")
 src/harnessforge/
   agent/       loop, LLM client, tools, context compaction, task memory, arg validation
+               + atomic episode checkpoints
   sandbox/     docker / local / terminal-bench sandboxes
-  eval/        task format, runner, TB adapter+runner, select, stats, compare
+  eval/        task format, runners, fork/recovery reports, select, stats, compare
   selfharness/ mining, proposal (multi-candidate), search (memory), validation, round/campaign
   replay.py    step-by-step trace replay CLI
   trace.py     JSONL trace schema + writer
 tasks/                   18 native tasks (bidirectionally verified)
 scripts/                 figure generation, TB image pre-pull
 docs/                    figures, data snapshots, dashboard
+  ARCHITECTURE.md        checkpoint, recovery, fork, and promotion invariants
+  RESUME_BULLETS.md      evidence-backed portfolio wording
 EXPERIMENTS.md           full experiment log + calibration table
 ```
 
 ## Tooling
 
 ```bash
-make report                    # lint + 72 tests + regenerate figures
+make report                    # lint + full test suite + regenerate figures
 python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
 make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
 python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
+python -m harnessforge.eval.recovery_report runs/experiment        # checkpoint/fork metrics
+
+# fork step 3 into an isolated candidate run, optionally under a new harness
+python -m harnessforge.eval.fork --source-run runs/control \
+    --target-run runs/candidate --task-id t01_fix_off_by_one \
+    --step 3 --harness-dir harness_candidate
+
+# run several harnesses from that exact checkpoint and rank continuations
+python -m harnessforge.eval.counterfactual \
+    --source-run runs/control --out runs/counterfactual \
+    --task-id t01_fix_off_by_one --step 3 \
+    --candidate baseline=harness \
+    --candidate selfverify=harness_selfverify
+# add --include-full-rerun only when you intend the extra API spend
+
+# controlled process-exit drill (single native task/repeat, concurrency=1)
+python -m harnessforge.eval.runner --tasks tasks --out runs/chaos \
+    --task-ids t01_fix_off_by_one --concurrency 1 --sandbox local \
+    --fault-exit-after-checkpoint 2
+python -m harnessforge.eval.runner --tasks tasks --out runs/chaos \
+    --task-ids t01_fix_off_by_one --concurrency 1 --sandbox local --resume
 ```
 
+**Live durability pilot (one task; mechanism check, not an aggregate quality
+claim).** On `t17_fix_csv_parser`, two candidates forked from the same step-5
+checkpoint used 29,140 continuation tokens versus 38,578 tokens for two independent
+full reruns: **9,438 fewer tokens (24.5%) and $0.01055 less (23.6%)**. One fork
+produced a grader-passing workspace while both full reruns failed, so outcome
+agreement was only 1/2 — direct evidence that fork evaluation is cheaper but does
+not replace repeated trials. The pilot also exposed two fixed-runtime defects
+(plain-path unified diffs were rejected and `/workspace` replacement corrupted
+already-expanded host paths); after the fixes, a baseline fork independently
+produced a 4/4-passing workspace. See the auditable snapshot in
+[`docs/data/durable_counterfactual_t17.json`](docs/data/durable_counterfactual_t17.json)
+and the caveats in [EXPERIMENTS.md](EXPERIMENTS.md).
+
+**Live crash/recovery drill.** A real `claude-haiku-4-5` run was deliberately
+terminated with process exit code 86 immediately after checkpoint 2, then resumed
+from the same run directory. It preserved **2,845 already-paid tokens / $0.003621**,
+continued without a second `run_start`, applied the fix, called `finish`, and passed
+the independent grader (2/2). The completed checkpoint and final result agree on
+all 15,651 tokens / $0.019379; checkpoint-write p95 was **6.304 ms** over eight
+commits. This is a one-run recovery mechanism check, not a latency SLO. Evidence:
+[`docs/data/durable_recovery_t01.json`](docs/data/durable_recovery_t01.json).
+
 The self-harness loop is a real search, not a single shot: it generates several
-candidate diffs per failure pattern, keeps the best per pattern, and remembers rejected
-attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
+candidate diffs per failure pattern, materializes every sibling from the same immutable
+parent harness, promotes only the best per pattern, and remembers rejected attempts
+across rounds so they aren't re-proposed (`selfharness/search.py`,
 `--rounds N` for a multi-round campaign).
 
 ## Quickstart
@@ -136,7 +222,7 @@ attempts across rounds so they aren't re-proposed (`selfharness/search.py`,
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # add ANTHROPIC_API_KEY
-make test                      # 72 tests, mock-LLM end-to-end, no API cost
+make test                      # mock-LLM end-to-end tests, no API cost
 
 # native suite
 python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3 --sandbox local
@@ -144,6 +230,7 @@ python -m harnessforge.eval.runner --tasks tasks --out runs/baseline --repeats 3
 # Terminal-Bench subset (needs Docker; pre-pull images first)
 python scripts/prepull_tb_images.py --tb-root ~/terminal-bench-2
 python -m harnessforge.eval.tb_runner --tb-root ~/terminal-bench-2 --out runs/tb_baseline --repeats 2
+# add --expected-tb-revision <git-sha> to refuse benchmark drift
 
 # one self-harness iteration
 python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
@@ -183,7 +270,9 @@ path. What's handled here:
   schema failures (pydantic) get the same repair loop, not just unparseable JSON.
 - **Tool timeouts**: every sandbox command runs under a wall-clock timeout (exit 124).
 - **Transient API failures**: explicit client timeout + our own retry loop with
-  exponential backoff and jitter; unretryable errors (e.g. 404 unknown model) fail fast.
+  exponential backoff and jitter. Only connection/timeout, 408/409/429, and 5xx
+  failures retry; permanent 4xx errors (bad request, authentication, missing model,
+  exhausted credits) fail after one call and skip the runner's whole-task retry.
 - **Infra vs agent failures kept separate**: a network/sandbox failure retries the
   whole task once, then records an explicit `api_error`/`infra_error` outcome that is
   excluded from pass-rate — so infrastructure noise never masquerades as agent ability.
@@ -192,18 +281,44 @@ path. What's handled here:
   discards completed API spend; `--resume` re-runs only missing (task, repeat) pairs
   and infra failures, and *refuses* to resume under a different harness version —
   mixed-version results files would corrupt provenance.
+- **Durable, forkable native episodes**: each committed agent turn atomically
+  checkpoints messages, task memory, termination guards, budget ledger, and a
+  versioned workspace snapshot. Resume first rolls the filesystem back to that
+  snapshot, discarding uncommitted mid-tool mutations, then continues from the
+  saved model-call index. A completed `TaskResult` also prevents duplicate model
+  spend if the process dies before `results.jsonl` is updated. Historical
+  checkpoints can be forked into isolated run directories and rebound to a new
+  harness revision for same-prefix counterfactual experiments; prefix tokens/cost
+  remain in the budget ledger. `eval.counterfactual` runs several candidates from
+  that identical state, separates logical total usage from actual continuation
+  spend, ranks candidates, and can optionally add full-rerun controls to measure
+  savings and outcome agreement. Harness or prompt drift is rejected on ordinary
+  resume. Terminal-Bench container snapshots and exactly-once external side effects
+  remain follow-up work and are not claimed here.
+- **Controlled recovery drills**: the native runner can explicitly exit with code
+  86 after a selected committed checkpoint. The option is default-off and refuses
+  multi-task/repeat or concurrent runs, so it can exercise real process recovery
+  without accidentally multiplying API work.
+- **Reproducible run provenance**: manifests record source Git revision/dirty state,
+  task-definition content hash, provider sampling configuration, pricing-table
+  revision, and (for Terminal-Bench) its upstream revision plus declared Docker
+  images. `--expected-tb-revision` can hard-fail on benchmark drift.
 - **Budget guards**: hard caps on steps, tokens, and cost; loop-level termination on
   repeated identical actions or repeated errors.
 - **Sandbox constraints**: per-task Docker isolation (no network for native tasks,
   memory/CPU limits); harness self-edits are backed up to `_history/` and git.
 
-Three of these were added *because a real run hit them* (see EXPERIMENTS.md): a
+Six of these were added *because a real run hit them* (see EXPERIMENTS.md): a
 retry loop with no timeout hung 27 min on a retired model ID; one task's API error
-crashed the whole suite via `asyncio.gather`; flaky networks needed jittered backoff.
+crashed the whole suite via `asyncio.gather`; flaky networks needed jittered backoff;
+an exhausted-credit 400 exposed that permanent client errors were being retried;
+and the live fork pilot exposed misleading patch errors plus unsafe local
+`/workspace` rewriting.
 
 **Deliberately out of scope (v1):** cross-task persistent memory (episode-scoped
 memory is in — see Task memory above), semantic tool
-routing, graph-based resumable orchestration, and multi-agent evaluation. This is a
+routing, Terminal-Bench container snapshots, exactly-once external side effects,
+and multi-agent evaluation. This is a
 research harness focused on *evaluation and self-improvement*, not a full production
 runtime — those walls are noted, not faked. See the harness-maturity self-assessment
 in [EXPERIMENTS.md](EXPERIMENTS.md).

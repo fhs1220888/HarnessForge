@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "experiment": "live_same_prefix_durability_pilot",
+  "date": "2026-07-30",
+  "status": "single_task_mechanism_case_study",
+  "model": "claude-haiku-4-5-20251001",
+  "task_id": "t17_fix_csv_parser",
+  "sandbox": "local",
+  "checkpoint": {
+    "step": 5,
+    "selection_rule": "implementation, fixture, and tests observed; no workspace edit yet",
+    "prefix_tokens": 9718,
+    "prefix_cost_usd": 0.012182
+  },
+  "initial_four_arm_pilot": {
+    "arms": [
+      {
+        "name": "baseline_fork",
+        "harness_version": "f325df98ab59",
+        "passed": false,
+        "grader": "0/4",
+        "exit_reason": "max_steps",
+        "incremental_tokens": 14263,
+        "incremental_cost_usd": 0.016827
+      },
+      {
+        "name": "selfverify_fork",
+        "harness_version": "9f68bf58ad1f",
+        "passed": true,
+        "grader": "4/4",
+        "exit_reason": "max_steps",
+        "incremental_tokens": 14877,
+        "incremental_cost_usd": 0.017265
+      },
+      {
+        "name": "baseline_full_rerun",
+        "harness_version": "f325df98ab59",
+        "passed": false,
+        "grader": "0/4",
+        "exit_reason": "max_steps",
+        "incremental_tokens": 20031,
+        "incremental_cost_usd": 0.023795
+      },
+      {
+        "name": "selfverify_full_rerun",
+        "harness_version": "9f68bf58ad1f",
+        "passed": false,
+        "grader": "0/4",
+        "exit_reason": "max_steps",
+        "incremental_tokens": 18547,
+        "incremental_cost_usd": 0.020847
+      }
+    ],
+    "aggregate": {
+      "fork_continuation_tokens": 29140,
+      "fork_continuation_cost_usd": 0.034092,
+      "full_rerun_tokens": 38578,
+      "full_rerun_cost_usd": 0.044642,
+      "token_savings": 9438,
+      "token_savings_fraction": 0.24465,
+      "cost_savings_usd": 0.01055,
+      "cost_savings_fraction": 0.236325,
+      "outcome_agreement_count": 1,
+      "outcome_agreement_total": 2,
+      "outcome_agreement_rate": 0.5
+    }
+  },
+  "runtime_incident": {
+    "confounds_initial_candidate_comparison": true,
+    "observed": [
+      "plain-path unified diff rejected by a hard-coded patch -p1",
+      "failed patch surfaced the misleading fallback text Patch applied.",
+      "unrestricted /workspace replacement could corrupt expanded host paths"
+    ],
+    "fixes": [
+      "atomic dry-run negotiation over -p1 then -p0",
+      "stderr and non-zero exit are propagated truthfully",
+      "token-aware canonical /workspace mapping"
+    ]
+  },
+  "post_fix_baseline_fork": {
+    "passed": true,
+    "grader": "4/4",
+    "exit_reason": "max_steps",
+    "incremental_tokens": 14002,
+    "incremental_cost_usd": 0.016046,
+    "note": "The model chose write_file; exact apply_patch behavior is covered by deterministic regression tests."
+  },
+  "interpretation": [
+    "Forking reduced incremental tokens and cost in this one-task pilot.",
+    "Fork and full-rerun outcomes agreed for only one of two candidates.",
+    "The initial baseline versus selfverify outcome is confounded by a runtime tool defect and is not a clean harness-effect estimate.",
+    "This artifact supports mechanism and observability claims, not population-level quality claims."
+  ]
+}

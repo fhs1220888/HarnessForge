@@ -8,10 +8,10 @@ decomposition per LangChain/OpenAI/Anthropic). Honest, not aspirational:
 
 | Component | Status | Notes |
 |---|---|---|
-| Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, run manifests, independent ground-truth verification, full self-harness eval loop |
+| Evaluation & observability | **near-production** | JSONL trace, replay CLI, bootstrap/Wilson CIs, provenance-rich run manifests (source/task/pricing/TB revisions), independent ground-truth verification, full self-harness eval loop |
 | Constraints & recovery | **near-production** | sandbox isolation, step/token/cost budgets, jittered retry, infra-vs-agent failure separation, LLM timeout, **pre-execution arg validation**, **malformed-output repair loop (agent args + meta-layer JSON)**, repeated-error termination |
 | Tool system | solid, simple | registry + executor + output truncation + error-as-observation; no semantic routing (6 tools, not needed) |
-| Orchestration | basic+ | single loop with termination conditions; **crash-safe suite persistence + `--resume`** (incremental results.jsonl, infra failures re-run, harness-version guard); no agent-loop graph/checkpoint or multi-agent |
+| Orchestration | solid (native) / basic (TB) | **historical turn-boundary checkpoints + versioned workspace snapshots**, rollback of uncommitted filesystem mutations, completed-result recovery, cross-harness checkpoint forks, and a controlled process-exit drill; TB container snapshots and exactly-once external side effects remain open |
 | Context management | basic+ | deterministic compaction (truncate old tool results, never grows context); compaction-safe memory channel; no relevance selection or layering |
 | State & memory | **solid (episode)** | agent-layer `TaskMemory`: `memory_write` tool, notes ride the system prompt so compaction can't destroy them, bounded + traced + replayable, e2e-tested; cross-round `ProposalMemory` at the meta layer; cross-*task* persistent memory deliberately out of scope (self-contained benchmark → no measurable benefit) |
 
@@ -190,13 +190,18 @@ The self-harness loop is a real search, not a single shot (`selfharness/search.p
 `proposal.py`, `round.py::run_campaign`):
 
 - **Multi-candidate:** the proposer emits several distinct diffs per failure pattern;
-  `select_best_per_group` validates them and keeps only the best per pattern.
+  every sibling is materialized from the same immutable parent harness;
+  `select_best_per_group` promotes only the best per pattern.
 - **Memory:** rejected candidates and *why* they failed (noise / regression / also-ran)
   are folded into `ProposalMemory` and injected into later prompts, so dead ends aren't
   re-proposed across rounds.
 - **Campaign:** `run_campaign` chains rounds — each round's merged harness becomes the
   next round's baseline — emitting a pass-rate trajectory, a per-candidate calibration
   table, and a persisted `memory.json`.
+- **Same-prefix counterfactuals:** `eval.counterfactual` forks multiple candidate
+  harnesses from one committed agent/workspace state, reports actual continuation
+  spend separately from the logical prefix-inclusive budget, and optionally runs
+  full-rerun controls to quantify savings and outcome agreement.
 
 All of this is covered by unit tests (`tests/test_search.py`) and wired into the CLI
 (`--rounds N`). A full multi-round campaign on live models is deferred on cost grounds:
@@ -205,6 +210,96 @@ per the power analysis above, the native suite has limited headroom at 8 steps a
 confirmed result — not worth the API spend for a portfolio artifact. The machinery is
 ready to run when justified; this repo prioritizes confirmed results (the −6.9% step
 reduction) over an underpowered trajectory chart.
+
+### Live same-prefix durability pilot (2026-07-30)
+
+This is a **mechanism/cost case study on one task**, not an estimate of general
+harness quality. A failed baseline trajectory on `t17_fix_csv_parser` was committed
+at every turn. Step 5 was selected before looking at candidate outcomes: by then the
+agent had read the implementation, fixture, and tests, but had not edited the
+workspace. Baseline and selfverify then continued from the exact same messages,
+budget ledger, and workspace snapshot; separate full reruns provided a deliberately
+more expensive reference.
+
+| Arm | Grader | New tokens | New cost |
+|---|---:|---:|---:|
+| baseline fork | fail | 14,263 | $0.016827 |
+| selfverify fork | **4/4 pass** | 14,877 | $0.017265 |
+| baseline full rerun | fail | 20,031 | $0.023795 |
+| selfverify full rerun | fail | 18,547 | $0.020847 |
+
+Across the two candidates, fork continuations used **29,140 tokens / $0.034092**
+versus **38,578 / $0.044642** for full reruns: **9,438 fewer tokens (24.5%) and
+$0.01055 less (23.6%)**. Each fork reused a 9,718-token, $0.012182 prefix. Prefix
+reuse is reported per candidate for logical budget accounting; the prefix was
+already paid once, so it is not included in incremental continuation spend.
+
+The result also demonstrates why the system records both grader outcome and exit
+reason: the passing fork reached `max_steps` immediately after writing the correct
+solution rather than calling `finish`. More importantly, outcome agreement between
+fork and full rerun was only **1/2**. Same-prefix evaluation reduces cost and controls
+the pre-fork history, but stochastic continuations remain stochastic; it is useful
+for diagnosis and candidate screening, not a substitute for powered evaluation.
+
+**Incident discovered during audit.** The baseline fork generated a correct unified
+diff, but the fixed runtime only accepted git-style `a/file` paths (`patch -p1`);
+the model emitted plain `file` headers. Worse, the tool returned the fallback text
+`Patch applied.` even though `exit_code=1`, because stderr was discarded. A second
+bug naively replaced every `/workspace` substring and could corrupt an already
+expanded host path containing a `workspaces` directory. Both were fixed:
+
+- patch execution dry-runs `-p1` then `-p0`, preserving the all-hunks gate;
+- failed patches surface stderr and can never say `Patch applied.`;
+- `/workspace` mapping now recognizes a shell path token rather than doing an
+  unrestricted substring replacement.
+
+Four focused regressions cover these contracts. The full suite is **95/95 passing**.
+A post-fix baseline fork from the same step-5 checkpoint used 14,002 new tokens /
+$0.016046 and independently produced a **4/4-passing** workspace. That follow-up
+model happened to choose `write_file`, so it validates the repaired end-to-end
+resume path; the exact `apply_patch` behavior is validated deterministically offline.
+The structured, path-sanitized evidence snapshot is
+[`docs/data/durable_counterfactual_t17.json`](docs/data/durable_counterfactual_t17.json).
+
+### Live process crash → resume drill (2026-07-30)
+
+To test recovery rather than merely unit-test serialization, the native runner gained
+an explicit `--fault-exit-after-checkpoint STEP` mode. It is default-off and refuses
+anything except one task, one repeat, and concurrency 1. After the requested
+checkpoint is atomically written and traced, the process exits with code 86; because
+this is process-level termination rather than an ordinary exception, the runner's
+infrastructure retry cannot hide it.
+
+The final v2 drill used baseline harness `f325df98ab59` and
+`t01_fix_off_by_one`:
+
+| Observation | Result |
+|---|---:|
+| Injected exit | after checkpoint 2, exit code 86 |
+| Committed prefix | 2 model calls, **2,845 tokens / $0.003621** |
+| Trace lifecycle | 1 `run_start`, 1 `fault_injected`, 1 `resume` |
+| Final episode | 7 model calls, 15,651 tokens / $0.019379 |
+| Agent/grader outcome | `finished_done`; **2/2 tests pass** |
+| Checkpoint writes | 8; p50 2.864 ms, p95/max **6.304 ms** |
+| Snapshot size | max 2,894 bytes |
+
+The restored episode resumed at step 2 with the five committed messages and did not
+reissue the first two model calls. Its completed checkpoint stores `next_step=7`,
+15 messages, the exact final token/cost ledger, a final workspace snapshot, and the
+same `final_result` written to `results.jsonl`. A regression also forks this completed
+checkpoint and checks that the cleared completion marker leaves a valid user-ended
+message sequence with the full budget ledger.
+
+The recovered model used a plain-path unified diff (`--- calc.py` / `+++ calc.py`);
+the fixed `-p1`/`-p0` patch negotiation applied it successfully, after which both the
+agent-visible tests and independent grader passed. Thus the earlier patch fix now has
+live-model evidence in addition to deterministic tests.
+
+Interpretation is deliberately narrow: this proves the native runtime can preserve
+and reuse a paid prefix across a real controlled process exit. The 6.304 ms p95 is
+an observed local measurement over eight tiny snapshots, **not** a production SLO or
+a general benchmark. Path-sanitized evidence:
+[`docs/data/durable_recovery_t01.json`](docs/data/durable_recovery_t01.json).
 
 ## Round 1 (self-harness iteration)
 
@@ -254,3 +349,15 @@ a first-class design constraint for self-improving harnesses.
    Fix: per-task infra retry, then an explicit `api_error` outcome that is
    distinguishable from an agent failure.
 3. Flaky network: exponential backoff with jitter (attempts 3 → 5).
+4. A live durability experiment hit Anthropic `400 credit balance too low`; the
+   client incorrectly treated every status error except 404 as transient and backed
+   off repeatedly. Fix: an explicit retry matrix — connection/timeout,
+   408/409/429/5xx only — plus an `UnretryableLLMError` that also bypasses the
+   runner's whole-task retry. The same request now fails once, records `api_error`,
+   costs $0, and remains resumable after credits are restored.
+5. A live fork emitted a valid plain-path unified diff, but the patch runtime assumed
+   git-style paths and silently returned `Patch applied.` on failure. Fix: atomic
+   `-p1`/`-p0` negotiation plus truthful stderr/error propagation.
+6. Local `/workspace` emulation used unrestricted string replacement and mangled
+   already-expanded host paths containing `workspaces`. Fix: token-aware mapping
+   with a regression for canonical and pre-expanded paths.
