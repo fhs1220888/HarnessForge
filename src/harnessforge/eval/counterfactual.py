@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -68,6 +69,43 @@ def _result_row(run_dir: Path) -> dict[str, Any]:
     return rows[0]
 
 
+def _write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    """Commit a report without exposing a truncated-but-valid-looking file."""
+    payload = json.dumps(value, indent=2)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as handle:
+        handle.write(payload)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+
+
+def _load_existing_fork(run_dir: Path, task_id: str) -> ForkResult:
+    """Recover immutable fork metadata from its trace during experiment resume."""
+    run_key = f"{task_id}-r0"
+    trace_path = run_dir / "traces" / f"{run_key}.jsonl"
+    events = load_trace(trace_path)
+    fork_events = [event for event in events if event["event_type"] == "fork"]
+    if len(fork_events) != 1:
+        raise RuntimeError(
+            f"expected one fork event in {trace_path}, found {len(fork_events)}"
+        )
+    payload = fork_events[0]["payload"]
+    return ForkResult(
+        source_run=str(payload["parent_run"]).rsplit(":", 1)[0],
+        target_run=str(run_dir.resolve()),
+        run_key=run_key,
+        checkpoint_step=int(payload["checkpoint_step"]),
+        parent_harness_version=str(payload["parent_harness_version"]),
+        target_harness_version=str(payload["target_harness_version"]),
+        prefix_tokens=(
+            int(payload["prefix_tokens_in"]) + int(payload["prefix_tokens_out"])
+        ),
+        prefix_cost_usd=float(payload["prefix_cost_usd"]),
+        workspace_snapshot=Path(str(payload["parent_checkpoint"])).stem,
+    )
+
+
 async def run_counterfactual(
     source_run: Path,
     out_dir: Path,
@@ -78,6 +116,7 @@ async def run_counterfactual(
     step: int | None = None,
     sandbox_kind: str = "docker",
     include_full_rerun: bool = False,
+    resume: bool = False,
 ) -> dict[str, Any]:
     if not candidates:
         raise ValueError("provide at least one candidate harness")
@@ -90,6 +129,8 @@ async def run_counterfactual(
     out_dir.mkdir(parents=True, exist_ok=True)
     report_path = out_dir / "counterfactual_report.json"
     if report_path.exists():
+        if resume:
+            return json.loads(report_path.read_text(encoding="utf-8"))
         raise FileExistsError(f"experiment report already exists: {report_path}")
 
     arms = []
@@ -97,9 +138,12 @@ async def run_counterfactual(
     for name, harness_dir in candidates.items():
         harness_dir = Path(harness_dir)
         fork_dir = out_dir / f"{name}-fork"
-        fork: ForkResult = fork_native_run(
-            source_run, fork_dir, task_id, harness_dir, repeat=0, step=step
-        )
+        if resume and (fork_dir / "checkpoints" / f"{task_id}-r0.json").exists():
+            fork = _load_existing_fork(fork_dir, task_id)
+        else:
+            fork = fork_native_run(
+                source_run, fork_dir, task_id, harness_dir, repeat=0, step=step
+            )
         if actual_checkpoint_step is None:
             actual_checkpoint_step = fork.checkpoint_step
         await run_suite(
@@ -127,7 +171,7 @@ async def run_counterfactual(
                 task_ids=[task_id],
                 sandbox_kind=sandbox_kind,
                 harness_dir=harness_dir,
-                resume=False,
+                resume=resume,
             )
             full_row = _result_row(full_dir)
             full_usage = _trace_usage(full_dir / "traces" / f"{task_id}-r0.jsonl")
@@ -219,7 +263,7 @@ async def run_counterfactual(
         "arms": arms,
         "aggregate": aggregate,
     }
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    _write_json_atomic(report_path, report)
     return report
 
 
@@ -247,6 +291,11 @@ def main() -> None:
         action="store_true",
         help="also run every candidate from scratch (extra model/API cost)",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="reuse completed arms/checkpoints and an existing final report",
+    )
     args = parser.parse_args()
     candidates = dict(args.candidate)
     if len(candidates) != len(args.candidate):
@@ -260,6 +309,7 @@ def main() -> None:
         step=args.step,
         sandbox_kind=args.sandbox,
         include_full_rerun=args.include_full_rerun,
+        resume=args.resume,
     ))
     print(json.dumps(report, indent=2))
 

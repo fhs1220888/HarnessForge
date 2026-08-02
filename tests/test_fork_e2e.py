@@ -230,3 +230,50 @@ async def test_counterfactual_optional_full_rerun_measures_savings(tmp_path, mon
     assert aggregate["outcome_agreement"] == 1
     assert aggregate["outcome_agreement_count"] == 1
     assert aggregate["outcome_agreement_rate"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_counterfactual_resume_reuses_completed_arm(tmp_path, monkeypatch):
+    task = Task.load(REPO / "tasks/t01_fix_off_by_one")
+    cfg = HarnessConfig.load(REPO / "harness")
+    source = tmp_path / "source"
+    experiment = tmp_path / "experiment"
+
+    monkeypatch.setattr(runner_mod, "LLMClient", lambda: WriteThenCrash())
+    with pytest.raises(RuntimeError, match="fork fixture crash"):
+        await runner_mod.run_one(task, cfg, source, repeat=0, sandbox_kind="local")
+
+    first_continuation = VerifyAndFinish()
+    monkeypatch.setattr(runner_mod, "LLMClient", lambda: first_continuation)
+    initial = await run_counterfactual(
+        source,
+        experiment,
+        REPO / "tasks",
+        task.task_id,
+        {"candidate": REPO / "harness"},
+        step=1,
+        sandbox_kind="local",
+    )
+    assert first_continuation.calls == 2
+
+    # Model a coordinator crash after the arm result was durable but before its
+    # top-level report could be trusted. Resume must rebuild the report without a
+    # second continuation or a conflicting fork directory.
+    experiment.joinpath("counterfactual_report.json").unlink()
+
+    def should_not_call_model():
+        raise AssertionError("completed arm invoked the model during resume")
+
+    monkeypatch.setattr(runner_mod, "LLMClient", should_not_call_model)
+    resumed = await run_counterfactual(
+        source,
+        experiment,
+        REPO / "tasks",
+        task.task_id,
+        {"candidate": REPO / "harness"},
+        step=1,
+        sandbox_kind="local",
+        resume=True,
+    )
+
+    assert resumed == initial
