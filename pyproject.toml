@@ -17,7 +17,9 @@ dev = [
     "matplotlib>=3.8",
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
-    "ruff>=0.6",
+    # Ruff is pre-1.0: minor releases may enable new default rules. Pin the
+    # validated lint contract so CI cannot change underneath a source commit.
+    "ruff==0.15.22",
 ]
 
 [build-system]
