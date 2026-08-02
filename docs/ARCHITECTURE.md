@@ -118,6 +118,22 @@ only once, after selecting the best accepted candidate per failure pattern; atom
 replacement prevents accepted-but-losing siblings from leaking into the promoted
 revision.
 
+Before two multi-task reports can be called paired, the comparator requires the
+same source run, ordered task set, checkpoint step, and prefix token/cost ledger for
+every task. It then reports outcome flips, paired bootstrap intervals for pass rate,
+tokens, cost, and steps, plus an exact McNemar test for discordant binary outcomes.
+An attractive point estimate cannot be promoted when the quality interval crosses
+zero or efficiency regresses.
+
+## Evidence contract
+
+The benchmark scorecard has no composite number. It preserves four evidence grades:
+external capability, external paired intervention efficiency, controlled runtime
+durability, and internal evaluation efficiency. The scorecard recomputes the
+Terminal-Bench numerator and denominator from per-task outcomes and fails on
+inconsistent summaries. A golden test reproduces the checked-in JSON exactly from
+its evidence inputs, so README headline metrics cannot drift independently.
+
 ## Explicit boundaries
 
 - Native task workspaces are snapshot/resume capable; Terminal-Bench container

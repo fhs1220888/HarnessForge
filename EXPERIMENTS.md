@@ -244,6 +244,43 @@ Implementation details matter for spend safety: the coordinator writes its repor
 atomically after every task, `--resume` reuses completed arms and partial agent
 checkpoints, and `--max-new-cost-usd` is a soft cap checked between tasks.
 
+### Same-prefix candidate gate: verification discipline rejected (2026-08-03)
+
+To turn the cost mechanism into a real harness-selection loop, a new treatment was
+snapshotted in `harness_variants/verification_discipline`. Unlike the older
+Terminal-Bench selfverify harness, this candidate keeps the current tools, episode
+memory, budgets, loop policy, and native `run_tests_before_finish` gate byte-for-byte
+equivalent after parsing; only `system_prompt.md` changes. It also supports joining a
+saved episode instead of demanding an impossible new "first action" at checkpoint 4.
+
+Baseline and treatment continued from the same five source checkpoints. The paired
+comparator verified identical source run, ordered task set, checkpoint step, prefix
+tokens, and prefix cost before producing a report.
+
+| Metric | Control | Treatment | Paired treatment − control |
+|---|---:|---:|---:|
+| Passes | 3/5 | 4/5 | +0.20, CI [−0.40, +0.80] |
+| Tokens | 74,662 | 79,616 | **+6.64%**, CI entirely above 0 |
+| Cost | $0.091406 | $0.097780 | **+6.97%**, CI entirely above 0 |
+| Mean steps | 8.0 | 8.0 | 0; every continuation hit the cap |
+
+Outcome flips were two treatment-only (`t05`, `t16`), one control-only (`t09`), and
+two both-pass. Exact McNemar p=1.0. The point estimate looks attractive (80% vs
+60%), but quality is unconfirmed and efficiency measurably regressed, so the gate
+classifies it `underpowered_or_no_confirmed_gain` and **rejects promotion**. This is
+the desired result of a self-improving harness: small-sample luck does not accumulate
+into the live policy. Evidence:
+[`docs/data/verification_candidate_comparison.json`](docs/data/verification_candidate_comparison.json).
+
+### Four-axis benchmark scorecard (2026-08-03)
+
+`eval.benchmark_scorecard` consolidates the external capability baseline, external
+paired efficiency intervention, controlled recovery drill, and prefix-evaluation
+efficiency without inventing a composite score. It recomputes rates and Wilson
+intervals from per-task outcomes, validates denominators, and is protected by a
+golden test against the checked-in evidence card. See [BENCHMARK.md](BENCHMARK.md)
+and [`docs/data/benchmark_scorecard.json`](docs/data/benchmark_scorecard.json).
+
 ### Earlier one-task same-prefix durability pilot (2026-07-30)
 
 This is a **mechanism/cost case study on one task**, not an estimate of general

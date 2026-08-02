@@ -27,13 +27,16 @@ recovery, and feedback loops — not prompt tricks.
 
 | Evidence | Observed result | Scope |
 |---|---:|---|
-| Terminal-Bench 2.0 subset | **19/40 pass (47.5%)** | 20 pinned external tasks × 2 |
+| Terminal-Bench 2.0 subset | **19/40 = 47.5%**, CI [32.9%, 62.5%] | 20 pinned external tasks × 2; 0 infra errors |
 | selfverify intervention | **−6.9% steps**, 95% CI [−13.3%, −1.6%] | paired aggregate experiment |
 | same-prefix candidate screening | **−28.9% tokens/cost**, paired CI excludes 0 | 5-task mechanism benchmark |
 | controlled process crash | **2,845 paid tokens restored**, grader 2/2 | one-task recovery drill |
 
 The last two rows are explicitly mechanism checks, not population-level quality
 estimates. See [EXPERIMENTS.md](EXPERIMENTS.md) for statistical and tooling caveats.
+The denominator-checked four-axis view is in [BENCHMARK.md](BENCHMARK.md); its
+[machine-readable scorecard](docs/data/benchmark_scorecard.json) is reproduced by a
+golden test rather than maintained as an unverified marketing table.
 
 ## Architecture
 
@@ -166,6 +169,7 @@ make report                    # lint + full test suite + regenerate figures
 python -m harnessforge.replay runs/tb_baseline/traces/<run>.jsonl   # step-by-step trace replay
 make replay-fails RUN=runs/tb_baseline                             # replay every budget-exhausted run
 python -m harnessforge.eval.compare --control A --treatment B      # paired pass-rate + efficiency CIs
+python -m harnessforge.eval.benchmark_scorecard                    # regenerate the four-axis evidence card
 python -m harnessforge.eval.recovery_report runs/experiment        # checkpoint/fork metrics
 
 # fork step 3 into an isolated candidate run, optionally under a new harness
