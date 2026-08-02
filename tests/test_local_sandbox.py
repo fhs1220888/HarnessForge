@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from harnessforge.agent.tools import ToolExecutor
@@ -15,6 +17,17 @@ async def test_run_maps_only_canonical_workspace_token(tmp_path):
 
     assert canonical.exit_code == 0
     assert already_expanded.exit_code == 0
+
+
+@pytest.mark.asyncio
+async def test_timeout_reaps_shell_and_child_processes(tmp_path):
+    async with LocalSandbox(tmp_path / "task") as sandbox:
+        started = time.monotonic()
+        result = await sandbox.run("sleep 60 & wait", timeout_s=0.05)
+
+    assert result.exit_code == 124
+    assert "timed out after 0.05s" in result.stderr
+    assert time.monotonic() - started < 1
 
 
 @pytest.mark.asyncio

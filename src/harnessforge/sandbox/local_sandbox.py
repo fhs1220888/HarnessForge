@@ -11,6 +11,7 @@ import asyncio
 import os
 import re
 import shlex
+import signal
 import sys
 import time
 from pathlib import Path
@@ -54,12 +55,24 @@ class LocalSandbox:
             cwd=self.workspace,
             env=env,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            # A timed-out shell may own children that keep stdout/stderr open.
+            # Give every command a process group so timeout cleanup is complete.
+            start_new_session=True,
         )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
         except asyncio.TimeoutError:
-            proc.kill()
-            return ExecResult("", f"timed out after {timeout_s}s", 124, time.monotonic() - t0)
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            out, err = await proc.communicate()
+            stderr = err.decode(errors="replace")
+            timeout_message = f"timed out after {timeout_s}s"
+            stderr = f"{stderr.rstrip()}\n{timeout_message}" if stderr else timeout_message
+            return ExecResult(
+                out.decode(errors="replace"), stderr, 124, time.monotonic() - t0
+            )
         return ExecResult(
             out.decode(errors="replace"), err.decode(errors="replace"),
             proc.returncode or 0, time.monotonic() - t0,
