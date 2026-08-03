@@ -8,6 +8,7 @@ No API calls, no Docker. Verifies:
 
 import shutil
 import sys
+import copy
 from pathlib import Path
 
 import pytest
@@ -35,9 +36,11 @@ class ScriptedLLM:
     def __init__(self, script: list[list[dict]]):
         self.script = list(script)
         self.calls = 0
+        self.max_tokens_seen: list[int] = []
 
     async def complete(self, system, messages, tools=None, max_tokens=4096) -> LLMResponse:
         self.calls += 1
+        self.max_tokens_seen.append(max_tokens)
         if not self.script:
             pytest.fail("mock LLM ran out of scripted steps — loop did not terminate")
         tool_calls = [
@@ -48,6 +51,27 @@ class ScriptedLLM:
                for tc in tool_calls]
         return LLMResponse(text="", tool_calls=tool_calls, stop_reason="tool_use",
                            tokens_in=100, tokens_out=50, cost_usd=0.0005, raw_content=raw)
+
+
+def _verifier_config(
+    min_successful_commands: int = 1,
+    require_final_state_audit: bool = False,
+) -> HarnessConfig:
+    base = HarnessConfig.load(REPO / "harness_selfverify")
+    policy = copy.deepcopy(base.loop_policy)
+    policy["limits"]["max_steps"] = 12
+    policy["verification"] = {
+        "enforce_before_finish": True,
+        "min_successful_commands": min_successful_commands,
+        "require_final_state_audit": require_final_state_audit,
+        "final_state_min_successful_commands": 1,
+    }
+    return HarnessConfig(
+        system_prompt=base.system_prompt,
+        tool_descriptions=base.tool_descriptions,
+        loop_policy=policy,
+        version="test-verifier",
+    )
 
 
 @pytest.mark.asyncio
@@ -165,3 +189,128 @@ async def test_loop_aborts_on_repeated_action(tmp_path):
 
     assert result.exit_reason == "repeated_action"
     assert result.status == "aborted"
+
+
+@pytest.mark.asyncio
+async def test_verifier_defers_finish_until_post_finish_evidence(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    script = [
+        [{"name": "finish", "input": {"status": "done", "summary": "looks done"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "still done"}}],
+        [{"name": "bash", "input": {"command": "test -d ."}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "verified"}}],
+    ]
+
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="verify-gate")
+        llm = ScriptedLLM(script)
+        cfg = _verifier_config()
+        policy = copy.deepcopy(cfg.loop_policy)
+        policy["limits"]["max_output_tokens_per_call"] = 12345
+        cfg = HarnessConfig(
+            system_prompt=cfg.system_prompt,
+            tool_descriptions=cfg.tool_descriptions,
+            loop_policy=policy,
+            version=cfg.version,
+        )
+        loop = AgentLoop(cfg, llm, ToolExecutor(sandbox), trace)
+        result = await loop.run("Create and verify the requested deliverable.")
+
+    assert result.exit_reason == "finished_done"
+    assert result.steps == 4
+    assert llm.max_tokens_seen == [12345] * 4
+    types = [event["event_type"] for event in load_trace(trace.path)]
+    assert types.count("verification_start") == 1
+    assert types.count("verification_rejected") == 1
+    assert types.count("verification_evidence") == 1
+    assert types.count("verification_passed") == 1
+
+
+@pytest.mark.asyncio
+async def test_verifier_resets_evidence_after_edit(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    script = [
+        [{"name": "finish", "input": {"status": "done", "summary": "first pass"}}],
+        [{"name": "bash", "input": {"command": "test -d ."}}],
+        [{"name": "write_file", "input": {"path": "answer.txt", "content": "fixed\n"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "edited"}}],
+        [{"name": "bash", "input": {"command": "test \"$(cat answer.txt)\" = fixed"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "reverified"}}],
+    ]
+
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="verify-reset")
+        loop = AgentLoop(
+            _verifier_config(), ScriptedLLM(script), ToolExecutor(sandbox), trace
+        )
+        result = await loop.run("Write answer.txt.")
+
+    assert result.exit_reason == "finished_done"
+    events = load_trace(trace.path)
+    resets = [event for event in events if event["event_type"] == "verification_reset"]
+    assert len(resets) == 1
+    assert resets[0]["payload"]["prior_successful_commands"] == 1
+    assert sum(event["event_type"] == "verification_evidence" for event in events) == 2
+
+
+@pytest.mark.asyncio
+async def test_verifier_resets_evidence_after_failed_command(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    script = [
+        [{"name": "finish", "input": {"status": "done", "summary": "first pass"}}],
+        [{"name": "bash", "input": {"command": "test -d ."}}],
+        [{"name": "bash", "input": {"command": "false"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "not enough"}}],
+        [{"name": "bash", "input": {"command": "test -d ."}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "verified"}}],
+    ]
+
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="verify-failure")
+        loop = AgentLoop(
+            _verifier_config(), ScriptedLLM(script), ToolExecutor(sandbox), trace
+        )
+        result = await loop.run("Verify the workspace.")
+
+    assert result.exit_reason == "finished_done"
+    events = load_trace(trace.path)
+    resets = [event for event in events if event["event_type"] == "verification_reset"]
+    assert resets[0]["payload"]["reason"] == "failed_verification_command"
+    assert resets[0]["payload"]["prior_successful_commands"] == 1
+    assert sum(event["event_type"] == "verification_rejected" for event in events) == 1
+
+
+@pytest.mark.asyncio
+async def test_verifier_requires_final_state_audit(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    script = [
+        [{"name": "finish", "input": {"status": "done", "summary": "implemented"}}],
+        [{"name": "bash", "input": {"command": "touch test-binary; test -f test-binary"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "behavior works"}}],
+        [{"name": "bash", "input": {"command": "rm test-binary; test ! -e test-binary"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "clean final state"}}],
+    ]
+
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="verify-final-state")
+        loop = AgentLoop(
+            _verifier_config(require_final_state_audit=True),
+            ScriptedLLM(script),
+            ToolExecutor(sandbox),
+            trace,
+        )
+        result = await loop.run("Create one deliverable without test artifacts.")
+
+    assert result.exit_reason == "finished_done"
+    assert not (workspace / "test-binary").exists()
+    events = load_trace(trace.path)
+    types = [event["event_type"] for event in events]
+    assert types.count("verification_final_audit") == 1
+    passed = next(
+        event for event in events if event["event_type"] == "verification_passed"
+    )
+    assert passed["payload"]["final_state_audited"] is True

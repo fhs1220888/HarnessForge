@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "benchmark": "Terminal-Bench 2.0 holdout-v1",
+  "scope": "8 pinned holdout tasks x 2 independent runs; not an official full-suite score",
+  "harness_version": "fd10f5ed8f93",
+  "agent_model": "claude-sonnet-5",
+  "terminal_bench_revision": "2fd12b88aafdd04a52c298e3940bcb189f9766d6",
+  "protocol": {
+    "max_steps": 40,
+    "max_tokens_per_call": 16384,
+    "max_cost_usd_per_task": 2.0,
+    "temperature": null
+  },
+  "task_count": 8,
+  "repeats_per_task": 2,
+  "scored_runs": 16,
+  "passed_runs": 11,
+  "pass_rate": 0.6875,
+  "wilson_95": [
+    0.444,
+    0.8584
+  ],
+  "infra_errors": 0,
+  "total_cost_usd": 18.9624,
+  "mean_cost_usd": 1.1851,
+  "total_tokens": 5660891,
+  "mean_tokens": 353805.7,
+  "mean_steps": 25.12,
+  "exit_reasons": {
+    "finished_done": 8,
+    "max_steps": 1,
+    "max_tokens": 7
+  },
+  "stability": {
+    "stable_pass_2_of_2": 4,
+    "mixed_1_of_2": 3,
+    "stable_fail_0_of_2": 1
+  },
+  "per_task": {
+    "overfull-hbox": [
+      true,
+      false
+    ],
+    "largest-eigenval": [
+      true,
+      true
+    ],
+    "modernize-scientific-stack": [
+      true,
+      true
+    ],
+    "build-cython-ext": [
+      false,
+      false
+    ],
+    "git-multibranch": [
+      true,
+      true
+    ],
+    "sanitize-git-repo": [
+      true,
+      false
+    ],
+    "sqlite-db-truncate": [
+      true,
+      false
+    ],
+    "log-summary-date-ranges": [
+      true,
+      true
+    ]
+  },
+  "source_run_dirs": [
+    "runs/tb_holdout_v1_verifier_pilot",
+    "runs/tb_holdout_v1_verifier_confirmation",
+    "runs/tb_holdout_v1_verifier_repeat2"
+  ]
+}

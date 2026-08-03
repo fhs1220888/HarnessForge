@@ -60,15 +60,24 @@ class TBOutcome:
     category: str
 
 
-def _tb_budget_config(base: HarnessConfig, max_steps: int) -> HarnessConfig:
+def _tb_budget_config(
+    base: HarnessConfig,
+    max_steps: int,
+    max_cost_usd: float | None = None,
+) -> HarnessConfig:
     """Clone the harness config with a TB-appropriate step budget, leaving all
     evolvable *content* untouched so we still measure the same harness."""
+    if max_cost_usd is not None and max_cost_usd <= 0:
+        raise ValueError("max_cost_usd must be positive")
     policy = copy.deepcopy(base.loop_policy)
     policy.setdefault("limits", {})["max_steps"] = max_steps
     policy["limits"]["max_tokens_per_task"] = max(
         policy["limits"].get("max_tokens_per_task", 150_000), 500_000)
-    policy["limits"]["max_cost_usd_per_task"] = max(
-        policy["limits"].get("max_cost_usd_per_task", 0.25), 1.50)
+    policy["limits"]["max_cost_usd_per_task"] = (
+        max_cost_usd
+        if max_cost_usd is not None
+        else max(policy["limits"].get("max_cost_usd_per_task", 0.25), 1.50)
+    )
     return HarnessConfig(
         system_prompt=base.system_prompt,
         tool_descriptions=base.tool_descriptions,
@@ -98,9 +107,10 @@ async def run_tb_task(task: TBTask, cfg: HarnessConfig, out_dir: Path, repeat: i
 async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurrency: int = 2,
                        subset: list[str] | None = None, max_steps: int = 25,
                        harness_dir: Path | None = None, resume: bool = False,
-                       expected_tb_revision: str | None = None) -> dict:
+                       expected_tb_revision: str | None = None,
+                       max_cost_usd: float | None = None) -> dict:
     base = HarnessConfig.load(harness_dir) if harness_dir else HarnessConfig.load()
-    cfg = _tb_budget_config(base, max_steps)
+    cfg = _tb_budget_config(base, max_steps, max_cost_usd=max_cost_usd)
     tasks = load_subset(tb_root, subset)
     tb_revision = repository_revision(tb_root)
     if expected_tb_revision and not tb_revision.startswith(expected_tb_revision):
@@ -124,6 +134,7 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
         suite_hash=suite_hash([t.task_id for t in tasks]),
         task_ids=[t.task_id for t in tasks],
         repeats=repeats, max_steps=max_steps,
+        max_output_tokens=cfg.policy("limits.max_output_tokens_per_call", 4096),
         temperature=configured_temperature(),
         source_revision=repository_revision(Path(__file__).parents[3]),
         source_dirty=repository_is_dirty(Path(__file__).parents[3]),
@@ -133,6 +144,10 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
             "harness_dir": str(harness_dir) if harness_dir else "harness/",
             "terminal_bench_revision": tb_revision,
             "terminal_bench_expected_revision": expected_tb_revision,
+            "max_cost_usd_per_task": cfg.policy("limits.max_cost_usd_per_task"),
+            "max_output_tokens_per_call": cfg.policy(
+                "limits.max_output_tokens_per_call", 4096
+            ),
             "declared_docker_images": {t.task_id: t.docker_image for t in tasks},
         },
     ).write(out_dir)
@@ -168,6 +183,7 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
         "benchmark": "terminal-bench-2 / tb-subset",
         "harness_version": cfg.version,
         "tb_max_steps": max_steps,
+        "tb_max_cost_usd_per_task": cfg.policy("limits.max_cost_usd_per_task"),
         "n_tasks": len(tasks),
         "repeats": repeats,
         "n_scored": len(scored),
@@ -190,6 +206,12 @@ def main() -> None:
     ap.add_argument("--repeats", type=int, default=2)
     ap.add_argument("--concurrency", type=int, default=2)
     ap.add_argument("--tb-max-steps", type=int, default=25)
+    ap.add_argument(
+        "--tb-max-cost-usd",
+        type=float,
+        default=None,
+        help="Per-task cost cap; default is at least $1.50 for Terminal-Bench",
+    )
     ap.add_argument("--subset", nargs="*", default=None, help="task IDs; default tb-subset-v1")
     ap.add_argument("--harness-dir", type=Path, default=None)
     ap.add_argument("--resume", action="store_true",
@@ -201,7 +223,8 @@ def main() -> None:
     summary = asyncio.run(run_tb_suite(
         args.tb_root, args.out, args.repeats, args.concurrency,
         args.subset, args.tb_max_steps, args.harness_dir, resume=args.resume,
-        expected_tb_revision=args.expected_tb_revision))
+        expected_tb_revision=args.expected_tb_revision,
+        max_cost_usd=args.tb_max_cost_usd))
     print(json.dumps(summary, indent=2))
 
 

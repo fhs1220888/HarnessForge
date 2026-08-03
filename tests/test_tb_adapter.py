@@ -9,7 +9,13 @@ import textwrap
 
 import pytest
 
-from harnessforge.eval.tb_adapter import TBTask, discover_tb_tasks, load_subset
+from harnessforge.eval.tb_adapter import (
+    TB_HOLDOUT_V1,
+    TB_SUBSET_V1,
+    TBTask,
+    discover_tb_tasks,
+    load_subset,
+)
 
 
 def make_tb_task(root, name="demo-task", docker_image="example/demo:1"):
@@ -74,3 +80,9 @@ def test_load_subset_exact(tmp_path):
     make_tb_task(tmp_path, name="b")
     tasks = load_subset(tmp_path, subset=["b", "a"])
     assert [t.task_id for t in tasks] == ["b", "a"]  # order follows the subset list
+
+
+def test_holdout_is_pinned_and_disjoint_from_development_subset():
+    assert len(TB_HOLDOUT_V1) == 8
+    assert len(set(TB_HOLDOUT_V1)) == len(TB_HOLDOUT_V1)
+    assert set(TB_HOLDOUT_V1).isdisjoint(TB_SUBSET_V1)

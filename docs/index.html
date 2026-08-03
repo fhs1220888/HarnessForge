@@ -33,22 +33,22 @@
 <body>
 <header>
   <h1>HarnessForge <span class="sub">— results dashboard</span></h1>
-  <div class="sub">Self-evolving coding-agent harness · agent under test: <code>claude-haiku-4-5</code></div>
+  <div class="sub">Durable coding-agent harness · holdout agent: <code>claude-sonnet-5</code> + mandatory verifier</div>
 </header>
 <main>
   <div class="card">
-    <h2>Terminal-Bench subset — baseline</h2>
+    <h2>Terminal-Bench 2.0 holdout-v1 — 8 tasks × 2 independent runs</h2>
     <div class="row">
       <div class="kpi"><div class="big" id="tb-rate">–</div><div class="muted" id="tb-ci">pass rate</div></div>
       <div class="kpi"><div class="big" id="tb-infra">–</div><div class="muted">infrastructure errors</div></div>
-      <div class="kpi"><div class="big" id="tb-maxsteps">–</div><div class="muted">runs that hit max_steps</div></div>
+      <div class="kpi"><div class="big" id="tb-maxsteps">–</div><div class="muted">budget exits (max_tokens / max_steps)</div></div>
       <div class="kpi"><div class="big" id="tb-cost-run">–</div><div class="muted">cost / scored run</div></div>
     </div>
   </div>
 
   <div class="card">
     <h2>Per-task pass rate</h2>
-    <p class="muted">Failing tasks are tagged: <span class="pill fixable">harness-fixable</span> (doable in-budget — the agent mismanaged its steps; these are what self-harness targets) vs <span class="pill capped">capability-limited</span> (needs compute the model can't deliver in 25 steps regardless of harness). Tags come from <code>eval/select.py</code>.</p>
+    <p class="muted">Holdout stability across both frozen repeats. The first repeat scored 87.5%; the second 50.0%, so the headline uses all 16 runs rather than selecting the better sample. This is not an official full-suite score.</p>
     <table><tbody id="tb-tasks"></tbody></table>
   </div>
 
@@ -98,7 +98,7 @@ const pct = x => (x*100).toFixed(1)+'%';
 async function load(name){ const r = await fetch('data/'+name); return r.json(); }
 
 (async function(){
-  const tb = await load('tb_baseline_summary.json');
+  const tb = await load('tb_holdout_v1_verifier_scorecard.json');
   const score = await load('benchmark_scorecard.json');
   const cap = score.capability_external;
   $('tb-rate').textContent = pct(cap.outcomes.rate);
@@ -107,16 +107,10 @@ async function load(name){ const r = await fetch('data/'+name); return r.json();
   $('tb-maxsteps').textContent = cap.budget_exhaustion.successes+'/'+cap.budget_exhaustion.observations;
   $('tb-cost-run').textContent = '$'+cap.cost_per_scored_run_usd.toFixed(4);
 
-  // task tags mirror eval/select.py (TB_HARNESS_FIXABLE / TB_CAPABILITY_LIMITED)
-  const FIXABLE = new Set(["prove-plus-comm","crack-7z-hash","openssl-selfsigned-cert",
-    "polyglot-c-py","merge-diff-arc-agi-task","qemu-startup"]);
-  const CAPPED = new Set(["mteb-leaderboard","mteb-retrieve","hf-model-inference","raman-fitting"]);
-  const tagFor = (k, r) => {
-    if (r > 0) return "";
-    if (FIXABLE.has(k)) return `<span class="pill fixable">harness-fixable</span>`;
-    if (CAPPED.has(k)) return `<span class="pill capped">capability-limited</span>`;
-    return "";
-  };
+  const tagFor = r => r===1
+    ? `<span class="pill yes">stable 2/2</span>`
+    : r===0 ? `<span class="pill no">failed 0/2</span>`
+    : `<span class="pill fixable">mixed 1/2</span>`;
 
   const rows = Object.entries(tb.per_task)
     .map(([k,v])=>[k, v.reduce((a,b)=>a+b,0)/v.length])
@@ -126,7 +120,7 @@ async function load(name){ const r = await fetch('data/'+name); return r.json();
     return `<tr><td style="width:230px">${k}</td>
       <td><div class="bar" style="width:${Math.max(r*100,2)}%;background:${c}"></div></td>
       <td style="width:60px">${pct(r)}</td>
-      <td style="width:150px">${tagFor(k,r)}</td></tr>`;
+      <td style="width:150px">${tagFor(r)}</td></tr>`;
   }).join('');
 
   const cal = await load('calibration.json');

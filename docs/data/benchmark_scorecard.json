@@ -4,8 +4,53 @@
   "composite_score": null,
   "composite_score_policy": "Intentionally omitted: capability, efficiency, durability, and evaluation cost have different denominators and failure consequences.",
   "capability_external": {
-    "benchmark": "terminal-bench-2 / tb-subset",
+    "benchmark": "Terminal-Bench 2.0 holdout-v1",
     "independent_grader": true,
+    "official_full_suite": false,
+    "scope": "8 pinned holdout tasks x 2 independent runs; not an official full-suite score",
+    "agent_model": "claude-sonnet-5",
+    "tasks": 8,
+    "repeats": 2,
+    "outcomes": {
+      "successes": 11,
+      "observations": 16,
+      "rate": 0.6875,
+      "wilson_ci95": [
+        0.444039,
+        0.858356
+      ]
+    },
+    "infrastructure_errors": {
+      "successes": 0,
+      "observations": 16,
+      "rate": 0.0,
+      "wilson_ci95": [
+        0.0,
+        0.193613
+      ]
+    },
+    "budget_exhaustion": {
+      "successes": 8,
+      "observations": 16,
+      "rate": 0.5,
+      "wilson_ci95": [
+        0.279992,
+        0.720008
+      ]
+    },
+    "total_cost_usd": 18.9624,
+    "cost_per_scored_run_usd": 1.1851,
+    "cost_per_pass_usd": 1.7239,
+    "stability": {
+      "stable_pass_2_of_2": 4,
+      "mixed_1_of_2": 3,
+      "stable_fail_0_of_2": 1
+    },
+    "evidence_grade": "external-benchmark-disjoint-repeated-holdout"
+  },
+  "capability_development_baseline": {
+    "benchmark": "terminal-bench-2 / tb-subset",
+    "agent_model": "claude-haiku-4-5",
     "tasks": 20,
     "repeats": 2,
     "outcomes": {
@@ -36,9 +81,8 @@
       ]
     },
     "total_cost_usd": 10.38,
-    "cost_per_scored_run_usd": 0.2595,
-    "cost_per_pass_usd": 0.5463,
-    "evidence_grade": "external-benchmark"
+    "comparison_policy": "Different model, task set, and budgets; retained as a diagnostic development baseline, not a causal comparison.",
+    "evidence_grade": "external-benchmark-development-subset"
   },
   "intervention_efficiency_external": {
     "benchmark": "Terminal-Bench 2.0 high-signal paired subset",
@@ -140,7 +184,8 @@
     "evidence_grade": "paired-internal-gate-case-study"
   },
   "claim_policy": [
-    "External Terminal-Bench results are the capability headline.",
+    "The disjoint repeated Terminal-Bench holdout is the capability headline.",
+    "The holdout is not an official full-suite leaderboard submission.",
     "Five-task native experiments support mechanism and gate-behavior claims only.",
     "Confidence intervals and denominators accompany every reported rate or delta.",
     "A directionally favorable but underpowered candidate is rejected, not promoted."

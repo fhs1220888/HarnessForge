@@ -26,6 +26,7 @@ def verified_scorecard(data_dir: Path = DEFAULT_DATA) -> dict[str, Any]:
     data_dir = Path(data_dir)
     generated = build_scorecard(
         _read(data_dir, "tb_baseline_summary.json"),
+        _read(data_dir, "tb_holdout_v1_verifier_scorecard.json"),
         _read(data_dir, "tb_selfverify_comparison.json"),
         _read(data_dir, "durable_recovery_t01.json"),
         _read(data_dir, "durable_counterfactual_multitask.json"),
@@ -62,13 +63,14 @@ def render_demo(scorecard: dict[str, Any]) -> str:
         "====================================",
         "No API key, network, or Docker required. Scorecard integrity: VERIFIED",
         "",
-        "[1/4] External capability — Terminal-Bench 2.0",
+        "[1/4] External capability — Terminal-Bench 2.0 holdout-v1",
         f"  PASS  {outcomes['successes']}/{outcomes['observations']} = "
         f"{_pct(outcomes['rate'])}  Wilson 95% CI "
         f"[{_pct(pass_ci[0])}, {_pct(pass_ci[1])}]",
         f"  INFRA {capability['infrastructure_errors']['successes']}/"
         f"{outcomes['observations']} errors  COST "
         f"${capability['cost_per_scored_run_usd']:.4f}/scored run",
+        "  SCOPE 8 pinned holdout tasks x 2; not an official full-suite score",
         "",
         "[2/4] External paired intervention — efficiency",
         f"  STEPS {step['pct_change']:+.2f}%  mean delta {step['mean_delta']:+.4f} "

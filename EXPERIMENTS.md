@@ -177,9 +177,77 @@ pass/fail needs ~16× the data to confirm a small effect, but steps is continuou
 and low-variance, so the same runs already confirm the efficiency gain. Choosing a
 higher-power metric *is* the result. No extra spend was needed.
 
-**Meta-arc across all three interventions.** Each was better designed than the last
-(reverify-after-patch → permission-to-finish → verification-discipline) and each was
-measured more rigorously (single-run → paired → high-signal selection + pooled bootstrap).
+## Round 3: mandatory verifier state machine + disjoint holdout
+
+The selfverify prompt improved behavior but could not enforce its own checklist. A
+live Sonnet pilot on four development tasks made the failure concrete: the model could
+call `finish(done)` after plausible but incomplete checks, and reasoning-capable model
+responses could consume the fixed 4096 output-token envelope before emitting any tool
+call. A second failure exposed a subtler issue: verification itself can corrupt the
+deliverable. `polyglot-c-py` produced correct Python/C Fibonacci output, but the compile
+check left `/app/polyglot/cmain` behind when the task required a single final source
+file. Once its grader was inspected for diagnosis, that task remained development data
+and was not reused as holdout evidence.
+
+`harness_verifier` turns completion into a checkpointed runtime protocol:
+
+1. The first `finish(done)` is deferred and starts an adversarial verification phase.
+2. At least two successful bash checks after the latest edit are required. `write_file`,
+   `apply_patch`, or any failed verification command resets accumulated evidence.
+3. A second completion claim starts a separate final-state audit. Test binaries, logs,
+   caches, temporary files, and background processes must be cleaned up; a final command
+   must audit the exact deliverable paths before completion is accepted.
+4. Verifier phase/evidence/audit state is part of the atomic checkpoint schema, so a
+   process crash and resume cannot bypass the gate.
+5. The model-call output envelope is configurable and set to 16k for this harness. This
+   removed observed `4096 + stop_reason=max_tokens + no tool` retry loops while total
+   task token and cost guards remained authoritative.
+
+### Holdout protocol
+
+Eight tasks (`tb-holdout-v1`) were pinned from metadata only and kept disjoint from the
+20-task development subset. No instruction, solution, or test content was read before
+the harness/protocol was frozen. Each task ran twice with Terminal-Bench's own reward
+check in its declared Docker image.
+
+| Field | Frozen value |
+|---|---|
+| Agent model | `claude-sonnet-5` |
+| Harness | `fd10f5ed8f93` (`harness_verifier`) |
+| Terminal-Bench revision | `2fd12b88aafdd04a52c298e3940bcb189f9766d6` |
+| Budgets | 40 steps; 500k cumulative tokens; 16k output tokens/call; $2/task |
+| Sampling | provider default temperature |
+| Denominator | 8 tasks × 2 independent runs = 16 |
+
+### Holdout results
+
+| Metric | Result |
+|---|---:|
+| Pass rate | **68.75% (11/16)** |
+| Wilson 95% CI | **[44.4%, 85.8%]** |
+| Infrastructure errors | **0** |
+| Total / mean cost | $18.96 / $1.19 per run |
+| Mean tokens / steps | 353.8k / 25.1 |
+| Exit reasons | 8 `finished_done`; 7 `max_tokens`; 1 `max_steps` |
+| Stability | 4 tasks pass 2/2; 3 pass 1/2; 1 fails 0/2 |
+
+The first repeat scored 7/8 (87.5%) and the second 4/8 (50%). Reporting only the first
+would have overstated reliability; all 16 frozen runs produce the 68.75% headline. The
+score is above the project's 60% minimum / 65–70% stretch target, but the interval is
+still wide and the 7/16 budget-exhaustion count identifies the next engineering target:
+earlier context compaction and more efficient step allocation. The older Haiku 47.5%
+development baseline uses a different model, task set, and budget, so the +21.25-point
+numerical difference is **not** claimed as a causal harness uplift.
+
+The result is regenerated from the three crash-safe run shards by
+`eval/holdout_scorecard.py`. The aggregator refuses infra rows, duplicate run IDs,
+missing repeats, unexpected tasks, or mixed model/harness/step/cost/output-token
+protocols before producing `docs/data/tb_holdout_v1_verifier_scorecard.json`.
+
+**Meta-arc across all four interventions.** Each was better designed than the last
+(reverify-after-patch → permission-to-finish → verification-discipline → enforced
+evidence + final-state audit) and each was measured more rigorously (single-run → paired
+→ high-signal selection + pooled bootstrap → disjoint repeated holdout).
 The honest bottom line: naive self-harness merges noise; the fix is not a cleverer prompt
 but a measurement regime — effect-size thresholds, regression guards, and enough
 statistical power to tell a real +7 pp from a lucky one.

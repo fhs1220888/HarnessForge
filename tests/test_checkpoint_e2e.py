@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from harnessforge.agent.checkpoint import AgentCheckpointStore, CheckpointMismatchError
+from harnessforge.agent.checkpoint import (
+    AgentCheckpoint,
+    AgentCheckpointStore,
+    CheckpointMismatchError,
+    prompt_fingerprint,
+)
 from harnessforge.agent.llm import LLMResponse
 from harnessforge.agent.loop import AgentLoop
 from harnessforge.agent.tools import ToolExecutor
@@ -169,6 +174,27 @@ def test_checkpoint_refuses_prompt_or_harness_drift(tmp_path):
         store.load("h2", "original")
     with pytest.raises(CheckpointMismatchError, match="prompt"):
         store.load("h1", "changed")
+
+
+def test_checkpoint_roundtrips_verifier_state(tmp_path):
+    store = AgentCheckpointStore(tmp_path / "checkpoint.json")
+    store.save(AgentCheckpoint(
+        harness_version="verifier-v1",
+        task_prompt_hash=prompt_fingerprint("task"),
+        next_step=7,
+        messages=[],
+        verification_active=True,
+        verification_round=1,
+        verification_successful_commands=2,
+        verification_final_audit_active=True,
+    ))
+
+    restored = store.load("verifier-v1", "task")
+    assert restored is not None
+    assert restored.verification_active is True
+    assert restored.verification_round == 1
+    assert restored.verification_successful_commands == 2
+    assert restored.verification_final_audit_active is True
 
 
 @pytest.mark.asyncio

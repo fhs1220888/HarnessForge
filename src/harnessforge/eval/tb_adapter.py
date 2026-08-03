@@ -111,6 +111,25 @@ TB_SUBSET_V1 = [
 ]
 
 
+# --- tb-holdout-v1 ----------------------------------------------------------
+# Development decisions must not be validated on TB_SUBSET_V1 forever. These
+# tasks were pinned using metadata only (difficulty/category/expert-time); their
+# instructions, solutions, and tests were not inspected before the split. Keep
+# this list disjoint from TB_SUBSET_V1 and do not tune task-specific behavior on
+# its outcomes. The first four form the cheap pilot; the remainder support a
+# larger confirmation run after the protocol is frozen.
+TB_HOLDOUT_V1 = [
+    "overfull-hbox",                  # easy, debugging
+    "largest-eigenval",               # medium, mathematics, ~3.5min expert
+    "modernize-scientific-stack",     # medium, scientific-computing, ~5min
+    "build-cython-ext",               # medium, debugging, ~9min
+    "git-multibranch",                # medium, system-administration
+    "sanitize-git-repo",              # medium, security
+    "sqlite-db-truncate",             # medium, debugging
+    "log-summary-date-ranges",        # medium, data-processing
+]
+
+
 def load_subset(tb_root: Path, subset: list[str] | None = None) -> list[TBTask]:
     """Load exactly the pinned subset, erroring loudly on any missing ID so we
     never silently benchmark on a different set than we reported."""

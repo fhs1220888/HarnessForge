@@ -13,7 +13,8 @@ def test_offline_demo_verifies_and_renders_checked_evidence():
     rendered = render_demo(scorecard)
 
     assert "No API key, network, or Docker required" in rendered
-    assert "19/40 = 47.5%" in rendered
+    assert "11/16 = 68.8%" in rendered
+    assert "not an official full-suite score" in rendered
     assert "2 calls / 2,845 tokens" in rendered
     assert "DECISION REJECT" in rendered
     assert "Scorecard integrity: VERIFIED" in rendered
@@ -35,6 +36,7 @@ def test_pages_dashboard_reads_generated_evidence_without_placeholder_intervals(
     index = Path(__file__).parents[1].joinpath("docs/index.html").read_text(encoding="utf-8")
 
     assert "benchmark_scorecard.json" in index
+    assert "tb_holdout_v1_verifier_scorecard.json" in index
     assert "tb_selfverify_comparison.json" in index
     assert "verification_candidate_comparison.json" in index
     assert "−…" not in index

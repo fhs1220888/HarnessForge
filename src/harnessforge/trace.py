@@ -25,6 +25,12 @@ class EventType(str, Enum):
     TERMINATION = "termination"      # payload: exit_reason, status, summary
     TEST_RUN = "test_run"            # payload: command, passed, output (truncated)
     VALIDATION_ERROR = "validation_error"  # payload: tool, input, error (bad tool args, not executed)
+    VERIFICATION_START = "verification_start"  # payload: round, required evidence, proposed summary
+    VERIFICATION_EVIDENCE = "verification_evidence"  # payload: command, count, required
+    VERIFICATION_RESET = "verification_reset"  # payload: reset reason and prior evidence count
+    VERIFICATION_REJECTED = "verification_rejected"  # payload: reason and evidence counts
+    VERIFICATION_FINAL_AUDIT = "verification_final_audit"  # payload: final-state audit requirements
+    VERIFICATION_PASSED = "verification_passed"  # payload: round and evidence count
     MEMORY_WRITE = "memory_write"    # payload: key, content (truncated), n_notes
     CHECKPOINT = "checkpoint"        # payload: next_step, state counts, snapshot metrics
     RESUME = "resume"                # payload: next_step and restored budget ledger

@@ -19,6 +19,7 @@ def _read(name: str) -> dict:
 def test_checked_scorecard_reproduces_from_evidence():
     generated = build_scorecard(
         _read("tb_baseline_summary.json"),
+        _read("tb_holdout_v1_verifier_scorecard.json"),
         _read("tb_selfverify_comparison.json"),
         _read("durable_recovery_t01.json"),
         _read("durable_counterfactual_multitask.json"),
@@ -35,6 +36,7 @@ def test_scorecard_rejects_inconsistent_external_denominator():
     with pytest.raises(ValueError, match="scored count"):
         build_scorecard(
             baseline,
+            _read("tb_holdout_v1_verifier_scorecard.json"),
             _read("tb_selfverify_comparison.json"),
             _read("durable_recovery_t01.json"),
             _read("durable_counterfactual_multitask.json"),

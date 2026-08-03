@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .loop import TaskResult
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def prompt_fingerprint(prompt: str) -> str:
@@ -38,6 +38,10 @@ class AgentCheckpoint:
     tests_ran: bool = False
     recent_actions: list[str] = field(default_factory=list)
     consecutive_validation_errors: int = 0
+    verification_active: bool = False
+    verification_round: int = 0
+    verification_successful_commands: int = 0
+    verification_final_audit_active: bool = False
     memory_notes: dict[str, str] = field(default_factory=dict)
     tokens_in: int = 0
     tokens_out: int = 0

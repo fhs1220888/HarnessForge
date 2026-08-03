@@ -1,0 +1,47 @@
+# EVOLVABLE COMPONENT — edits to this file go through the self-harness validation gate.
+
+limits:
+  max_steps: 8
+  max_tokens_per_task: 150000
+  # Reasoning-capable models can consume 4096 tokens before emitting a tool call.
+  # A larger per-call envelope prevents repeated max_tokens/no-tool loops; the
+  # total task token and cost guards remain authoritative.
+  max_output_tokens_per_call: 16384
+  max_cost_usd_per_task: 0.25
+  tool_timeout_s: 60
+  max_output_chars: 8000
+
+retries:
+  llm_api: { max_attempts: 3, backoff_s: 5 }
+  tool_error_reprompt: true
+
+testing:
+  # Terminal-Bench hides its reward check. The verifier state machine supplies a
+  # generic evidence gate instead of pretending a visible pytest suite exists.
+  run_tests_before_finish: false
+  on_test_failure: "show_full_traceback"
+
+verification:
+  enforce_before_finish: true
+  min_successful_commands: 2
+  require_final_state_audit: true
+  final_state_min_successful_commands: 1
+  prompt: >-
+    Re-read the original instruction and challenge the proposed solution as an
+    independent reviewer. Run new commands that verify exact paths, formats,
+    observable behavior, edge cases, and persistence where relevant. A file
+    listing or a repeated earlier command alone is not sufficient evidence.
+
+context:
+  compaction_trigger_tokens: 120000
+  keep_last_n_tool_results: 5
+  compaction_strategy: "summarize_older_steps"
+
+memory:
+  max_notes: 20
+  max_chars_per_note: 1000
+
+termination:
+  consecutive_identical_actions: 3
+  consecutive_tool_errors: 5
+  consecutive_validation_errors: 4

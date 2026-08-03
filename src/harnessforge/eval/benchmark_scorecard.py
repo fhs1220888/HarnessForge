@@ -32,6 +32,7 @@ def _rate(successes: int, observations: int) -> dict[str, Any]:
 
 def build_scorecard(
     tb_baseline: dict[str, Any],
+    tb_holdout: dict[str, Any],
     tb_efficiency: dict[str, Any],
     recovery: dict[str, Any],
     prefix_benchmark: dict[str, Any],
@@ -44,6 +45,20 @@ def build_scorecard(
         raise ValueError("Terminal-Bench scored count does not match per-task outcomes")
     if round(passes / scored, 6) != tb_baseline["pass_rate"]:
         raise ValueError("Terminal-Bench pass rate does not match per-task outcomes")
+
+    holdout_outcomes = [
+        value
+        for values in tb_holdout["per_task"].values()
+        for value in values
+    ]
+    holdout_scored = len(holdout_outcomes)
+    holdout_passes = sum(bool(value) for value in holdout_outcomes)
+    if holdout_scored != tb_holdout["scored_runs"]:
+        raise ValueError("Terminal-Bench holdout count does not match per-task outcomes")
+    if holdout_passes != tb_holdout["passed_runs"]:
+        raise ValueError("Terminal-Bench holdout passes do not match per-task outcomes")
+    if round(holdout_passes / holdout_scored, 4) != tb_holdout["pass_rate"]:
+        raise ValueError("Terminal-Bench holdout rate does not match per-task outcomes")
 
     infra_errors = int(tb_baseline["n_infra_error"])
     max_steps = int(tb_baseline["exit_reasons"].get("max_steps", 0))
@@ -59,17 +74,44 @@ def build_scorecard(
             "cost have different denominators and failure consequences."
         ),
         "capability_external": {
-            "benchmark": tb_baseline["benchmark"],
+            "benchmark": tb_holdout["benchmark"],
             "independent_grader": True,
+            "official_full_suite": False,
+            "scope": tb_holdout["scope"],
+            "agent_model": tb_holdout["agent_model"],
+            "tasks": tb_holdout["task_count"],
+            "repeats": tb_holdout["repeats_per_task"],
+            "outcomes": _rate(holdout_passes, holdout_scored),
+            "infrastructure_errors": _rate(
+                tb_holdout["infra_errors"], holdout_scored
+            ),
+            "budget_exhaustion": _rate(
+                tb_holdout["exit_reasons"].get("max_steps", 0)
+                + tb_holdout["exit_reasons"].get("max_tokens", 0),
+                holdout_scored,
+            ),
+            "total_cost_usd": tb_holdout["total_cost_usd"],
+            "cost_per_scored_run_usd": tb_holdout["mean_cost_usd"],
+            "cost_per_pass_usd": round(
+                tb_holdout["total_cost_usd"] / holdout_passes, 4
+            ),
+            "stability": tb_holdout["stability"],
+            "evidence_grade": "external-benchmark-disjoint-repeated-holdout",
+        },
+        "capability_development_baseline": {
+            "benchmark": tb_baseline["benchmark"],
+            "agent_model": "claude-haiku-4-5",
             "tasks": tb_baseline["n_tasks"],
             "repeats": tb_baseline["repeats"],
             "outcomes": _rate(passes, scored),
             "infrastructure_errors": _rate(infra_errors, scored),
             "budget_exhaustion": _rate(max_steps, scored),
             "total_cost_usd": tb_baseline["total_cost_usd"],
-            "cost_per_scored_run_usd": round(tb_baseline["total_cost_usd"] / scored, 4),
-            "cost_per_pass_usd": round(tb_baseline["total_cost_usd"] / passes, 4),
-            "evidence_grade": "external-benchmark",
+            "comparison_policy": (
+                "Different model, task set, and budgets; retained as a diagnostic "
+                "development baseline, not a causal comparison."
+            ),
+            "evidence_grade": "external-benchmark-development-subset",
         },
         "intervention_efficiency_external": {
             "benchmark": "Terminal-Bench 2.0 high-signal paired subset",
@@ -129,7 +171,8 @@ def build_scorecard(
             "evidence_grade": "paired-internal-gate-case-study",
         },
         "claim_policy": [
-            "External Terminal-Bench results are the capability headline.",
+            "The disjoint repeated Terminal-Bench holdout is the capability headline.",
+            "The holdout is not an official full-suite leaderboard submission.",
             "Five-task native experiments support mechanism and gate-behavior claims only.",
             "Confidence intervals and denominators accompany every reported rate or delta.",
             "A directionally favorable but underpowered candidate is rejected, not promoted."
@@ -142,6 +185,8 @@ def main() -> None:
     data = Path("docs/data")
     parser.add_argument("--tb-baseline", type=Path,
                         default=data / "tb_baseline_summary.json")
+    parser.add_argument("--tb-holdout", type=Path,
+                        default=data / "tb_holdout_v1_verifier_scorecard.json")
     parser.add_argument("--tb-efficiency", type=Path,
                         default=data / "tb_selfverify_comparison.json")
     parser.add_argument("--recovery", type=Path,
@@ -155,6 +200,7 @@ def main() -> None:
     args = parser.parse_args()
     scorecard = build_scorecard(
         _read(args.tb_baseline),
+        _read(args.tb_holdout),
         _read(args.tb_efficiency),
         _read(args.recovery),
         _read(args.prefix_benchmark),

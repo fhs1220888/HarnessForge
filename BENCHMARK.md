@@ -15,20 +15,26 @@ pytest -q tests/test_benchmark_scorecard.py
 
 ## 1. External capability benchmark
 
-Terminal-Bench 2.0 subset, 20 pinned tasks × 2 repeats, independent task graders,
-`claude-haiku-4-5`, 25-step budget.
+Terminal-Bench 2.0 `holdout-v1`, 8 metadata-pinned tasks × 2 independent runs,
+independent task graders, `claude-sonnet-5`, mandatory verifier Harness, 40-step
+budget. The holdout was fixed before task instructions/tests were inspected and is
+disjoint from the 20-task development subset.
 
 | Metric | Result |
 |---|---:|
-| Pass rate | **19/40 = 47.5%** |
-| Wilson 95% interval | **[32.9%, 62.5%]** |
-| Infrastructure errors | **0/40** |
-| Max-step exits | 36/40 = 90.0% |
-| Total model cost | $10.38 |
-| Cost per scored run | $0.2595 |
-| Cost per grader pass | $0.5463 |
+| Pass rate | **11/16 = 68.75%** |
+| Wilson 95% interval | **[44.4%, 85.8%]** |
+| Infrastructure errors | **0/16** |
+| Budget exits | 8/16 = 50.0% |
+| Total model cost | $18.96 |
+| Cost per scored run | $1.1851 |
+| Cost per grader pass | $1.7239 |
+| Task stability | 4 pass 2/2; 3 pass 1/2; 1 fails 0/2 |
 
-This is the capability headline because the benchmark and graders are external.
+This is the capability headline because the benchmark and graders are external and
+the tasks were held out from development. It is an 8-task subset result, **not** an
+official 89-task leaderboard submission. The older Haiku development result remains
+19/40 = 47.5%, but uses a different model/task set/budget and is not a causal baseline.
 The native suite is useful for fast regression and controlled mechanisms, but it is
 not presented as a substitute for Terminal-Bench.
 
@@ -95,6 +101,7 @@ sample does not earn promotion when quality is unconfirmed and efficiency regres
 ## Evidence and claim policy
 
 - [Machine-readable scorecard](docs/data/benchmark_scorecard.json)
+- [Terminal-Bench holdout scorecard](docs/data/tb_holdout_v1_verifier_scorecard.json)
 - [Terminal-Bench baseline](docs/data/tb_baseline_summary.json)
 - [External paired intervention](docs/data/tb_selfverify_comparison.json)
 - [Crash/recovery drill](docs/data/durable_recovery_t01.json)
@@ -103,8 +110,9 @@ sample does not earn promotion when quality is unconfirmed and efficiency regres
 
 Claim rules:
 
-1. External Terminal-Bench results are the capability headline.
-2. Five-task native experiments support mechanism and gate-behavior claims only.
-3. Every rate or delta carries its denominator and interval.
-4. Non-confirmation is not described as equivalence.
-5. A favorable point estimate is rejected when the predeclared gate is not met.
+1. The disjoint repeated Terminal-Bench holdout is the capability headline.
+2. The holdout is not described as an official full-suite score.
+3. Five-task native experiments support mechanism and gate-behavior claims only.
+4. Every rate or delta carries its denominator and interval.
+5. Non-confirmation is not described as equivalence.
+6. A favorable point estimate is rejected when the predeclared gate is not met.

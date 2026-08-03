@@ -57,12 +57,35 @@ class AgentLoop:
         max_steps = p("limits.max_steps", 30)
         max_tokens = p("limits.max_tokens_per_task", 200_000)
         max_cost = p("limits.max_cost_usd_per_task", 0.50)
+        max_output_tokens = max(
+            1, int(p("limits.max_output_tokens_per_call", 4096))
+        )
 
         tools = _anthropic_tools(self.cfg)
         schema_map = build_schema_map(self.cfg.tool_descriptions)
         max_validation_errors = p("termination.consecutive_validation_errors", 4)
         memory_max_notes = p("memory.max_notes", 20)
         memory_max_chars = p("memory.max_chars_per_note", 1000)
+        verifier_enabled = bool(p("verification.enforce_before_finish", False))
+        verifier_min_commands = max(
+            1, int(p("verification.min_successful_commands", 1))
+        )
+        verifier_final_audit = bool(
+            p("verification.require_final_state_audit", False)
+        )
+        verifier_final_audit_min_commands = max(
+            1, int(p("verification.final_state_min_successful_commands", 1))
+        )
+        verifier_prompt = p(
+            "verification.prompt",
+            (
+                "Finish is deferred. Enter an independent verification phase: "
+                "re-read every deliverable, inspect the final artifacts, and run "
+                "concrete adversarial commands that would expose a wrong answer. "
+                "Do not merely repeat prior checks. If you edit anything, verify "
+                "the changed result again before calling finish."
+            ),
+        )
 
         saved = (
             self.checkpoint.load(self.cfg.version, task_prompt)
@@ -94,6 +117,10 @@ class AgentLoop:
             tests_ran = saved.tests_ran
             recent_actions = saved.recent_actions
             consecutive_validation_errors = saved.consecutive_validation_errors
+            verification_active = saved.verification_active
+            verification_round = saved.verification_round
+            verification_successful_commands = saved.verification_successful_commands
+            verification_final_audit_active = saved.verification_final_audit_active
             start_step = saved.next_step
         else:
             self.trace.emit(EventType.RUN_START, {
@@ -109,6 +136,10 @@ class AgentLoop:
             tests_ran = False
             recent_actions: list[str] = []
             consecutive_validation_errors = 0
+            verification_active = False
+            verification_round = 0
+            verification_successful_commands = 0
+            verification_final_audit_active = False
             start_step = 0
 
         def checkpoint_record(next_step: int) -> AgentCheckpoint:
@@ -120,6 +151,10 @@ class AgentLoop:
                 tests_ran=tests_ran,
                 recent_actions=recent_actions,
                 consecutive_validation_errors=consecutive_validation_errors,
+                verification_active=verification_active,
+                verification_round=verification_round,
+                verification_successful_commands=verification_successful_commands,
+                verification_final_audit_active=verification_final_audit_active,
                 memory_notes=memory.snapshot(),
                 tokens_in=self.trace.total_tokens_in,
                 tokens_out=self.trace.total_tokens_out,
@@ -188,9 +223,14 @@ class AgentLoop:
             # Memory rides on the system prompt, outside the message history, so
             # compaction can never destroy it.
             system = self.cfg.system_prompt + memory.render()
-            self.trace.emit(EventType.LLM_REQUEST,
-                            {"n_messages": len(messages), "n_memory_notes": len(memory)})
-            resp = await self.llm.complete(system, messages, tools)
+            self.trace.emit(EventType.LLM_REQUEST, {
+                "n_messages": len(messages),
+                "n_memory_notes": len(memory),
+                "max_output_tokens": max_output_tokens,
+            })
+            resp = await self.llm.complete(
+                system, messages, tools, max_tokens=max_output_tokens
+            )
             self.trace.emit(EventType.LLM_RESPONSE,
                             {"text": resp.text[:2000], "n_tool_calls": len(resp.tool_calls),
                              "stop_reason": resp.stop_reason},
@@ -200,8 +240,14 @@ class AgentLoop:
             if not resp.tool_calls:
                 # Model responded with text only; nudge it to use tools or finish.
                 messages.append({"role": "assistant", "content": resp.text or "..."})
-                messages.append({"role": "user",
-                                 "content": "Use a tool to make progress, or call `finish`."})
+                nudge = "Use a tool to make progress, or call `finish`."
+                if resp.stop_reason == "max_tokens":
+                    nudge = (
+                        "Your previous response exhausted its output-token budget "
+                        "before producing a tool call. Act now: use the single "
+                        "highest-value tool, or call `finish` if the task is complete."
+                    )
+                messages.append({"role": "user", "content": nudge})
                 persist(step + 1)
                 continue
 
@@ -221,6 +267,76 @@ class AgentLoop:
                             call["id"], "Rejected: run the task's tests before finishing.",
                             is_error=True))
                         continue
+                    if status == "done" and verifier_enabled:
+                        if not verification_active:
+                            verification_active = True
+                            verification_round += 1
+                            verification_successful_commands = 0
+                            verification_final_audit_active = False
+                            self.trace.emit(EventType.VERIFICATION_START, {
+                                "round": verification_round,
+                                "required_successful_commands": verifier_min_commands,
+                                "proposed_summary": call["input"].get("summary", "")[:1000],
+                            })
+                            tool_results_content.append(self._tool_result_block(
+                                call["id"],
+                                f"Finish deferred for mandatory verification round "
+                                f"{verification_round}. {verifier_prompt} Run at least "
+                                f"{verifier_min_commands} successful bash verification "
+                                "command(s) after the most recent edit, then call finish again.",
+                            ))
+                            continue
+                        required_commands = (
+                            verifier_final_audit_min_commands
+                            if verification_final_audit_active
+                            else verifier_min_commands
+                        )
+                        if verification_successful_commands < required_commands:
+                            self.trace.emit(EventType.VERIFICATION_REJECTED, {
+                                "round": verification_round,
+                                "reason": (
+                                    "insufficient_final_state_evidence"
+                                    if verification_final_audit_active
+                                    else "insufficient_post_edit_evidence"
+                                ),
+                                "successful_commands": verification_successful_commands,
+                                "required_successful_commands": required_commands,
+                            })
+                            tool_results_content.append(self._tool_result_block(
+                                call["id"],
+                                "Finish rejected: mandatory verification is incomplete. "
+                                f"Run {required_commands - verification_successful_commands} "
+                                "more successful bash verification command(s) after the "
+                                "most recent edit, then reassess every deliverable.",
+                                is_error=True,
+                            ))
+                            continue
+                        if verifier_final_audit and not verification_final_audit_active:
+                            verification_final_audit_active = True
+                            verification_successful_commands = 0
+                            self.trace.emit(EventType.VERIFICATION_FINAL_AUDIT, {
+                                "round": verification_round,
+                                "required_successful_commands": (
+                                    verifier_final_audit_min_commands
+                                ),
+                            })
+                            tool_results_content.append(self._tool_result_block(
+                                call["id"],
+                                "Behavioral verification passed, but completion is "
+                                "deferred for a final-state audit. Remove binaries, "
+                                "temporary files, logs, caches, and background processes "
+                                "created only for verification unless the task requests "
+                                "them. Then run a successful bash command that audits the "
+                                "exact deliverable paths and confirms no verification "
+                                "artifacts remain before calling finish again.",
+                            ))
+                            continue
+                        self.trace.emit(EventType.VERIFICATION_PASSED, {
+                            "round": verification_round,
+                            "successful_commands": verification_successful_commands,
+                            "required_successful_commands": required_commands,
+                            "final_state_audited": verification_final_audit_active,
+                        })
                     self.trace.emit(EventType.TOOL_CALL, {"tool": "finish", "input": call["input"]})
                     messages.append({
                         "role": "user",
@@ -277,6 +393,41 @@ class AgentLoop:
                                     {"command": call["input"]["command"],
                                      "passed": result.exit_code == 0,
                                      "output": result.output[:2000]})
+
+                if verification_active:
+                    required_commands = (
+                        verifier_final_audit_min_commands
+                        if verification_final_audit_active
+                        else verifier_min_commands
+                    )
+                    if call["name"] in {"write_file", "apply_patch"}:
+                        prior_evidence = verification_successful_commands
+                        verification_successful_commands = 0
+                        self.trace.emit(EventType.VERIFICATION_RESET, {
+                            "round": verification_round,
+                            "reason": "workspace_mutation",
+                            "mutating_tool": call["name"],
+                            "prior_successful_commands": prior_evidence,
+                        })
+                    elif call["name"] == "bash":
+                        if result.exit_code == 0:
+                            verification_successful_commands += 1
+                            self.trace.emit(EventType.VERIFICATION_EVIDENCE, {
+                                "round": verification_round,
+                                "command": call["input"].get("command", "")[:1000],
+                                "successful_commands": verification_successful_commands,
+                                "required_successful_commands": required_commands,
+                            })
+                        else:
+                            prior_evidence = verification_successful_commands
+                            verification_successful_commands = 0
+                            self.trace.emit(EventType.VERIFICATION_RESET, {
+                                "round": verification_round,
+                                "reason": "failed_verification_command",
+                                "command": call["input"].get("command", "")[:1000],
+                                "exit_code": result.exit_code,
+                                "prior_successful_commands": prior_evidence,
+                            })
 
                 tool_results_content.append(
                     self._tool_result_block(call["id"], result.output, is_error=result.error))
