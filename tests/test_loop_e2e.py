@@ -57,7 +57,7 @@ def _verifier_config(
     min_successful_commands: int = 1,
     require_final_state_audit: bool = False,
 ) -> HarnessConfig:
-    base = HarnessConfig.load(REPO / "harness_selfverify")
+    base = HarnessConfig.load(REPO / "harness_verifier")
     policy = copy.deepcopy(base.loop_policy)
     policy["limits"]["max_steps"] = 12
     policy["verification"] = {

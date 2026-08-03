@@ -1,0 +1,27 @@
+# EVOLVABLE COMPONENT — archived Round 2 self-verification candidate.
+
+limits:
+  max_steps: 8
+  max_tokens_per_task: 150000
+  max_cost_usd_per_task: 0.25
+  tool_timeout_s: 60
+  max_output_chars: 8000
+
+retries:
+  llm_api: { max_attempts: 3, backoff_s: 5 }
+  tool_error_reprompt: true
+
+testing:
+  # Terminal-Bench tasks do not expose their reward tests to the agent. This
+  # candidate replaces the native test gate with prompt-level deliverable checks.
+  run_tests_before_finish: false
+  on_test_failure: "show_full_traceback"
+
+context:
+  compaction_trigger_tokens: 120000
+  keep_last_n_tool_results: 5
+  compaction_strategy: "summarize_older_steps"
+
+termination:
+  consecutive_identical_actions: 3
+  consecutive_tool_errors: 5

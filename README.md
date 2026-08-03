@@ -205,7 +205,7 @@ python -m harnessforge.eval.counterfactual \
     --source-run runs/control --out runs/counterfactual \
     --task-id t01_fix_off_by_one --step 3 \
     --candidate baseline=harness \
-    --candidate selfverify=harness_selfverify
+    --candidate selfverify=harness_variants/selfverify_v1
 # add --include-full-rerun only when you intend the extra API spend
 
 # aggregate the same protocol across tasks; each completed arm is resumable

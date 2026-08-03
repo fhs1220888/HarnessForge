@@ -118,7 +118,8 @@ can actually move the needle: `{crack-7z-hash, merge-diff-arc-agi-task,
 openssl-selfsigned-cert, polyglot-c-py, prove-plus-comm, qemu-startup,
 vulnerable-secret}` + 3 always_pass regression guards.
 
-**Better intervention (`harness_selfverify`).** The finish-fix A/B failed because it
+**Better intervention (`harness_variants/selfverify_v1`, originally run as
+`harness_selfverify`).** The finish-fix A/B failed because it
 gave the agent *permission* to stop without a way to know it was right. The selfverify
 variant instead installs a completion *discipline*: (1) restate the deliverables as a
 checklist first; (2) before finishing, verify each item with a concrete command whose
