@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "status": "forecast_unscored",
+  "benchmark": "Terminal-Bench 2.0 holdout-v2 forecast",
+  "scope": "8 metadata-frozen tasks x 2 hypothetical runs; no v2 API calls",
+  "task_ids": [
+    "break-filter-js-from-html",
+    "count-dataset-tokens",
+    "custom-memory-heap-crash",
+    "dna-insert",
+    "financial-document-processor",
+    "pytorch-model-cli",
+    "qemu-alpine-ssh",
+    "sqlite-with-gcov"
+  ],
+  "future_runs": 16,
+  "source_observation": {
+    "benchmark": "Terminal-Bench 2.0 holdout-v1",
+    "passed_runs": 11,
+    "scored_runs": 16,
+    "pass_rate": 0.6875
+  },
+  "method": {
+    "model": "Beta-Binomial posterior predictive",
+    "prior": "Jeffreys Beta(0.5, 0.5)",
+    "assumption": "holdout-v2 runs are exchangeable with holdout-v1 runs",
+    "difficulty_adjustment": "none"
+  },
+  "predictive": {
+    "posterior_alpha": 11.5,
+    "posterior_beta": 5.5,
+    "expected_passes": 10.8235,
+    "expected_pass_rate": 0.6765,
+    "median_passes": 11,
+    "central_95_passes": [
+      5,
+      15
+    ],
+    "probability_at_least_8": 0.8951,
+    "probability_at_least_10": 0.7091,
+    "probability_at_least_11": 0.5743
+  },
+  "controller_mechanism_observation": {
+    "status": "infra_aborted_unscored",
+    "first_compaction_reduction_percent": 69.1,
+    "tokens_through_partial_run": 320981,
+    "used_to_shift_pass_forecast": false
+  },
+  "non_probabilistic_scenarios": {
+    "one_regression_vs_v1": {
+      "passes": 10,
+      "pass_rate": 0.625
+    },
+    "no_quality_effect": {
+      "passes": 11,
+      "pass_rate": 0.6875
+    },
+    "one_additional_recovery": {
+      "passes": 12,
+      "pass_rate": 0.75
+    },
+    "two_additional_recoveries": {
+      "passes": 13,
+      "pass_rate": 0.8125
+    }
+  },
+  "claims": {
+    "allowed": [
+      "posterior predictive median is 11/16 under exchangeability",
+      "mechanism telemetry supports context reduction"
+    ],
+    "forbidden": [
+      "holdout-v2 achieved a measured pass rate",
+      "the controller causally improves pass rate",
+      "the forecast is an official Terminal-Bench score"
+    ]
+  }
+}

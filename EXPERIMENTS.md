@@ -545,3 +545,27 @@ Before any v2 instructions or tests were opened, eight new tasks were frozen fro
 code-pinned and unit-tested to be disjoint from both the 20-task development set and
 holdout-v1. It will not be scored until API credit is available for the complete
 two-repeat protocol.
+
+### Offline v2 forecast (not a benchmark result)
+
+With API evaluation unavailable, the only defensible quality estimate treats the
+16 future v2 runs as exchangeable with the observed v1 `11/16`. A Jeffreys
+`Beta(0.5, 0.5)` prior produces posterior `Beta(11.5, 5.5)` and this predictive
+summary:
+
+| Quantity | Forecast |
+|---|---:|
+| Expected passes | 10.82/16 (67.6%) |
+| Predictive median | **11/16 (68.75%)** |
+| Central 95% predictive interval | **5–15 passes** |
+| P(at least 8/16) | 89.5% |
+| P(at least 10/16) | 70.9% |
+| P(at least 11/16) | 57.4% |
+
+No task-difficulty uplift was applied, even though v2's metadata-only expert-time
+mean is lower than v1's, because expert time has not been validated as a calibration
+variable. The controller's −69.1% first-compaction mechanism result is also **not**
+used to shift the quality posterior. Scenario rows from 10/16 through 13/16 are
+reported only as sensitivity analysis, without assigned probabilities. Reproducible
+generator: `python -m harnessforge.eval.forecast`; machine-readable output:
+[`docs/data/tb_holdout_v2_forecast.json`](docs/data/tb_holdout_v2_forecast.json).
