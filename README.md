@@ -22,8 +22,12 @@ recovery, and feedback loops — not prompt tricks.
 - **Measured self-improvement:** trace mining proposes declarative harness changes;
   immutable sibling candidates face paired target/regression evaluation before one
   winner can be promoted.
+- **Budget-pressure control:** cumulative token pressure collapses complete old
+  tool-use/result turns into a bounded deterministic ledger while recent evidence
+  stays verbatim, preventing a moderate context from bankrupting a long episode.
 - **Auditable execution:** JSONL traces, replay, independent graders, provenance-rich
-  manifests, truthful tool errors, and fail-fast permanent API failures.
+  manifests, truthful tool errors, fail-fast permanent API failures, and partial
+  token/cost accounting even when an infrastructure failure aborts a task.
 
 | Evidence | Observed result | Scope |
 |---|---:|---|
@@ -158,8 +162,10 @@ number carries a bootstrap or Wilson interval.
 
 The **agent loop** (`src/harnessforge/agent/loop.py`) is a from-scratch plan → tool-call
 → observation loop with retries, termination heuristics, context compaction, and a
-budget guard. Tools: `bash`, `read_file`, `write_file`, `apply_patch`, `memory_write`,
-`finish`, run in
+budget guard. Its budget-pressure controller removes complete old tool protocol pairs,
+retains six recent turns, and carries a bounded action/result ledger in the original
+task message; this preserves Anthropic tool-use validity while reducing repeated input.
+Tools: `bash`, `read_file`, `write_file`, `apply_patch`, `memory_write`, `finish`, run in
 a **Docker sandbox** (or a local sandbox for tests). Every step is a **JSONL trace event**
 with tokens, cost, and exit reason — mining, replay, and reporting all read that schema.
 

@@ -36,6 +36,11 @@ context:
   compaction_trigger_tokens: 120000
   keep_last_n_tool_results: 5
   compaction_strategy: "summarize_older_steps"
+  # Cumulative-budget controller: once 35% of the episode token budget is spent,
+  # retain six recent tool turns and fold older pairs into a bounded action ledger.
+  budget_compaction_trigger_ratio: 0.35
+  budget_keep_last_n_tool_turns: 6
+  budget_ledger_max_chars: 4000
 
 memory:
   max_notes: 20

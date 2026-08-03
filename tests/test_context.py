@@ -1,4 +1,10 @@
-from harnessforge.agent.context import compact_messages, estimate_tokens
+from harnessforge.agent.context import (
+    LEDGER_END,
+    LEDGER_START,
+    compact_messages,
+    compact_tool_turns,
+    estimate_tokens,
+)
 
 
 def _tool_result(i: int, size: int = 2000) -> dict:
@@ -55,3 +61,61 @@ def test_short_results_never_grow():
     results = [b for m in out if isinstance(m["content"], list)
                for b in m["content"] if b.get("type") == "tool_result"]
     assert all(not str(r["content"]).startswith("[compacted") for r in results)
+
+
+def test_budget_compaction_drops_complete_old_tool_turns():
+    original = _messages(10)
+    snapshot = str(original)
+
+    out, before, after, dropped = compact_tool_turns(original, keep_last_n=3)
+
+    assert dropped == 7
+    assert after < before
+    assert str(original) == snapshot
+    assert LEDGER_START in out[0]["content"] and LEDGER_END in out[0]["content"]
+    assert "bash" in out[0]["content"] and "output 6" in out[0]["content"]
+    calls = [
+        block
+        for message in out
+        if message["role"] == "assistant" and isinstance(message["content"], list)
+        for block in message["content"]
+        if block.get("type") == "tool_use"
+    ]
+    results = [
+        block
+        for message in out
+        if message["role"] == "user" and isinstance(message["content"], list)
+        for block in message["content"]
+        if block.get("type") == "tool_result"
+    ]
+    assert {block["id"] for block in calls} == {block["tool_use_id"] for block in results}
+    assert len(calls) == len(results) == 3
+
+
+def test_budget_compaction_merges_and_bounds_existing_ledger():
+    first, _, _, _ = compact_tool_turns(
+        _messages(8), keep_last_n=2, ledger_max_chars=500
+    )
+    # Add enough new complete turns to force a second compaction pass.
+    for i in range(8, 14):
+        first.append({"role": "assistant", "content": [
+            {"type": "tool_use", "id": f"tu_{i}", "name": "bash",
+             "input": {"command": f"command-{i}"}}
+        ]})
+        first.append({"role": "user", "content": [_tool_result(i)]})
+
+    second, before, after, dropped = compact_tool_turns(
+        first, keep_last_n=2, ledger_max_chars=500
+    )
+
+    assert dropped > 0 and after < before
+    ledger = second[0]["content"].split(LEDGER_START, 1)[1].split(LEDGER_END, 1)[0]
+    assert len(ledger) <= 550
+    assert "command-11" in ledger
+    assert "older compacted turns omitted" in ledger
+
+
+def test_budget_compaction_noop_with_too_few_turns():
+    original = _messages(2)
+    out, before, after, dropped = compact_tool_turns(original, keep_last_n=3)
+    assert out is original and before == after and dropped == 0

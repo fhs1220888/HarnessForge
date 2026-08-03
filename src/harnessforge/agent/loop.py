@@ -13,7 +13,7 @@ from typing import Any
 from ..config import HarnessConfig
 from ..trace import EventType, TraceWriter
 from .checkpoint import AgentCheckpoint, AgentCheckpointStore, prompt_fingerprint
-from .context import compact_messages, estimate_tokens
+from .context import compact_messages, compact_tool_turns, estimate_tokens
 from .llm import LLMClient
 from .memory import TaskMemory
 from .tools import ToolExecutor
@@ -219,14 +219,55 @@ class AgentLoop:
                     "strategy": "truncate_old_tool_results",
                 })
 
+            # A context-window trigger alone cannot protect a *cumulative* task
+            # token budget: repeatedly sending a 20k-token history can exhaust a
+            # 500k episode while never approaching the model context limit. Under
+            # budget pressure, collapse complete old tool turns into a bounded
+            # deterministic ledger and retain only the most recent turns verbatim.
+            budget_pressure = total_tokens / max_tokens if max_tokens > 0 else 1.0
+            budget_trigger = float(
+                p("context.budget_compaction_trigger_ratio", 1.1)
+            )
+            if budget_pressure >= budget_trigger:
+                messages, before, after, dropped = compact_tool_turns(
+                    messages,
+                    keep_last_n=int(
+                        p("context.budget_keep_last_n_tool_turns", 6)
+                    ),
+                    ledger_max_chars=int(
+                        p("context.budget_ledger_max_chars", 4000)
+                    ),
+                )
+                if dropped:
+                    self.trace.emit(EventType.COMPACTION, {
+                        "tokens_before": before,
+                        "tokens_after": after,
+                        "strategy": "budget_aware_tool_turn_ledger",
+                        "dropped_tool_turns": dropped,
+                        "task_token_budget_used_ratio": round(budget_pressure, 4),
+                    })
+
             # ---- model call ----------------------------------------------------
             # Memory rides on the system prompt, outside the message history, so
             # compaction can never destroy it.
-            system = self.cfg.system_prompt + memory.render()
+            budget_note = ""
+            if budget_pressure >= budget_trigger:
+                remaining_pct = max(0, round((1.0 - budget_pressure) * 100))
+                budget_note = (
+                    "\n\n# Runtime budget pressure\n"
+                    f"Approximately {remaining_pct}% of the task token budget remains. "
+                    "Older tool turns were compressed into the ledger in the original "
+                    "task message. Use the recent evidence and ledger; do not repeat "
+                    "broad exploration. Choose the shortest path to a concrete check, "
+                    "then verify and finish."
+                )
+            system = self.cfg.system_prompt + memory.render() + budget_note
             self.trace.emit(EventType.LLM_REQUEST, {
                 "n_messages": len(messages),
                 "n_memory_notes": len(memory),
                 "max_output_tokens": max_output_tokens,
+                "estimated_context_tokens": estimate_tokens(messages),
+                "task_token_budget_used_ratio": round(budget_pressure, 4),
             })
             resp = await self.llm.complete(
                 system, messages, tools, max_tokens=max_output_tokens

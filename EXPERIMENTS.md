@@ -500,3 +500,48 @@ a first-class design constraint for self-improving harnesses.
 6. Local `/workspace` emulation used unrestricted string replacement and mangled
    already-expanded host paths containing `workspaces`. Fix: token-aware mapping
    with a regression for canonical and pre-expanded paths.
+7. An infra-aborted Terminal-Bench pilot consumed model calls, but the fallback
+   `infra_error` row recorded zero tokens and cost. Fix: aggregate every partial
+   attempt trace into the infra outcome; infra remains excluded from pass-rate
+   denominators without disappearing from the spend ledger.
+
+## Budget-aware context compaction pilot (2026-08-03, unscored)
+
+Holdout-v1 showed seven `max_tokens` exits in 16 scored runs. Trace inspection found
+that none of those trajectories triggered the 120k context-window compactor: their
+individual contexts stayed near 28k tokens, but repeatedly resending that history
+exhausted the 500k *cumulative* task budget. The failure was a mismatch between the
+control signal and the guarded resource.
+
+The new controller activates at 35% cumulative token pressure. It removes complete
+old assistant `tool_use` + user `tool_result` pairs together (preserving protocol
+validity), writes a deterministic bounded ledger into the original task message, and
+keeps six recent turns verbatim. The system prompt also exposes remaining budget and
+asks the agent to converge instead of repeating broad exploration. Four new tests
+cover structural validity, bounded repeated compaction, non-mutation, and loop-level
+activation.
+
+A Sonnet 5 development-set pilot on `qemu-startup` triggered the mechanism online:
+
+| Observation | Result |
+|---|---:|
+| First compaction | estimated context 12,271 → 3,795 tokens (**−69.1%**) |
+| Pre-trigger model input | mean 10,174; last call 18,768 tokens |
+| Post-trigger model input | mean 6,757; final five calls 5,728–7,074 tokens |
+| Partial trajectory | 37 completed model calls; 320,981 tokens; $1.1176 |
+| Reward / pass result | **not scored** |
+
+Before the reward check, Anthropic returned permanent `credit balance too low`; the
+runner correctly emitted one `infra_error`, leaving the pass-rate denominator at zero.
+Therefore this pilot supports the **mechanism claim** (bounded context and lower
+late-trajectory input), but it does **not** support a pass-rate, completion-rate, or
+cost-effect claim. The frozen fresh-holdout evaluation remains pending. Structured
+evidence: [`docs/data/budget_compaction_dev_pilot.json`](docs/data/budget_compaction_dev_pilot.json).
+
+Before any v2 instructions or tests were opened, eight new tasks were frozen from
+`task.toml` metadata only: `break-filter-js-from-html`, `count-dataset-tokens`,
+`custom-memory-heap-crash`, `dna-insert`, `financial-document-processor`,
+`pytorch-model-cli`, `qemu-alpine-ssh`, and `sqlite-with-gcov`. `TB_HOLDOUT_V2` is
+code-pinned and unit-tested to be disjoint from both the 20-task development set and
+holdout-v1. It will not be scored until API credit is available for the complete
+two-repeat protocol.

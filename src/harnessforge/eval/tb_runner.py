@@ -33,7 +33,7 @@ from ..config import HarnessConfig
 import os
 
 from ..sandbox.tb_sandbox import TBSandbox
-from ..trace import TraceWriter
+from ..trace import TraceWriter, load_trace
 from .persistence import ResultSink
 from .stats import (
     RunManifest,
@@ -58,6 +58,21 @@ class TBOutcome:
     harness_version: str
     difficulty: str
     category: str
+
+
+def _aggregate_partial_traces(
+    trace_paths: set[Path],
+) -> tuple[int, int, float]:
+    """Return model calls, tokens, and cost spent by failed run attempts."""
+    model_calls = 0
+    tokens = 0
+    cost_usd = 0.0
+    for trace_path in sorted(trace_paths):
+        for event in load_trace(trace_path):
+            model_calls += event.get("event_type") == "llm_response"
+            tokens += event.get("tokens_in", 0) + event.get("tokens_out", 0)
+            cost_usd += event.get("cost_usd", 0.0)
+    return model_calls, tokens, round(cost_usd, 4)
 
 
 def _tb_budget_config(
@@ -156,6 +171,9 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
 
     async def guarded(task: TBTask, r: int) -> None:
         async with sem:
+            trace_pattern = f"{task.task_id}-r{r}-*.jsonl"
+            trace_dir = out_dir / "traces"
+            traces_before = set(trace_dir.glob(trace_pattern))
             for attempt in (1, 2):
                 try:
                     sink.record(await run_tb_task(task, cfg, out_dir, r))
@@ -168,9 +186,14 @@ async def run_tb_suite(tb_root: Path, out_dir: Path, repeats: int = 1, concurren
                     print(f"[tb] {task.task_id} r{r} infra failure "
                           f"(attempt {attempt}/2): {type(e).__name__}: {str(e)[:150]}",
                           flush=True)
+            partial_traces = set(trace_dir.glob(trace_pattern)) - traces_before
+            partial_steps, partial_tokens, partial_cost = _aggregate_partial_traces(
+                partial_traces
+            )
             sink.record(TBOutcome(
                 task_id=task.task_id, repeat=r, run_id=f"{task.task_id}-r{r}-infra-fail",
-                passed=False, exit_reason="infra_error", steps=0, cost_usd=0.0, tokens=0,
+                passed=False, exit_reason="infra_error", steps=partial_steps,
+                cost_usd=partial_cost, tokens=partial_tokens,
                 harness_version=cfg.version, difficulty=task.difficulty, category=task.category))
 
     jobs = [(t, r) for t in tasks for r in range(repeats)

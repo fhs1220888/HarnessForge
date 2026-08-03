@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "experiment": "budget-aware context compaction development pilot",
+  "status": "infra_aborted_unscored",
+  "scope": "one Terminal-Bench 2.0 development task; not holdout evidence",
+  "task_id": "qemu-startup",
+  "agent_model": "claude-sonnet-5",
+  "harness_version": "ff37963922c9",
+  "terminal_bench_revision": "2fd12b88aafdd04a52c298e3940bcb189f9766d6",
+  "protocol": {
+    "max_steps": 40,
+    "max_tokens_per_task": 500000,
+    "max_output_tokens_per_call": 16384,
+    "max_cost_usd_per_task": 2.0,
+    "budget_compaction_trigger_ratio": 0.35,
+    "budget_keep_last_n_tool_turns": 6,
+    "budget_ledger_max_chars": 4000
+  },
+  "scored_runs": 0,
+  "reward": null,
+  "infra_error": "credit_balance_too_low",
+  "partial_usage": {
+    "completed_model_calls": 37,
+    "tokens": 320981,
+    "cost_usd": 1.1176
+  },
+  "first_compaction": {
+    "estimated_tokens_before": 12271,
+    "estimated_tokens_after": 3795,
+    "reduction_percent": 69.1,
+    "dropped_tool_turns": 11,
+    "task_token_budget_used_ratio": 0.3616
+  },
+  "model_input_tokens": {
+    "pre_trigger_calls": 17,
+    "pre_trigger_mean": 10174.1,
+    "pre_trigger_last": 18768,
+    "post_trigger_calls": 20,
+    "post_trigger_mean": 6756.7,
+    "post_trigger_final_five": [5951, 5728, 6059, 6482, 7074]
+  },
+  "supported_claims": [
+    "controller activated under cumulative token pressure",
+    "complete old tool turns were replaced by a bounded ledger",
+    "late-trajectory input remained substantially below the pre-trigger peak"
+  ],
+  "unsupported_claims": [
+    "pass-rate improvement",
+    "completion-rate improvement",
+    "causal cost reduction"
+  ]
+}

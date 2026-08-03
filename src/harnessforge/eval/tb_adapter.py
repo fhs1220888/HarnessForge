@@ -130,6 +130,24 @@ TB_HOLDOUT_V1 = [
 ]
 
 
+# --- tb-holdout-v2 ----------------------------------------------------------
+# Frozen on 2026-08-03 using only task.toml metadata: task ID, difficulty,
+# category, expert-time estimate, resource limits, and internet flag. No v2
+# instruction.md, solution, or tests were read before selection. This split is
+# reserved for the budget-aware context controller and must remain disjoint from
+# both the development subset and holdout-v1.
+TB_HOLDOUT_V2 = [
+    "break-filter-js-from-html",      # medium, security, 20min expert
+    "count-dataset-tokens",           # medium, model-training, 30min
+    "custom-memory-heap-crash",       # medium, debugging, 30min
+    "dna-insert",                     # medium, scientific-computing, 30min
+    "financial-document-processor",   # medium, data-processing, 30min
+    "pytorch-model-cli",              # medium, model-training, 30min
+    "qemu-alpine-ssh",                # medium, system-administration, 30min
+    "sqlite-with-gcov",               # medium, system-administration, 30min
+]
+
+
 def load_subset(tb_root: Path, subset: list[str] | None = None) -> list[TBTask]:
     """Load exactly the pinned subset, erroring loudly on any missing ID so we
     never silently benchmark on a different set than we reported."""

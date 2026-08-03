@@ -37,10 +37,14 @@ class ScriptedLLM:
         self.script = list(script)
         self.calls = 0
         self.max_tokens_seen: list[int] = []
+        self.message_counts_seen: list[int] = []
+        self.systems_seen: list[str] = []
 
     async def complete(self, system, messages, tools=None, max_tokens=4096) -> LLMResponse:
         self.calls += 1
         self.max_tokens_seen.append(max_tokens)
+        self.message_counts_seen.append(len(messages))
+        self.systems_seen.append(system)
         if not self.script:
             pytest.fail("mock LLM ran out of scripted steps — loop did not terminate")
         tool_calls = [
@@ -189,6 +193,55 @@ async def test_loop_aborts_on_repeated_action(tmp_path):
 
     assert result.exit_reason == "repeated_action"
     assert result.status == "aborted"
+
+
+@pytest.mark.asyncio
+async def test_budget_pressure_compacts_complete_tool_turns(tmp_path):
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    script = [
+        [{"name": "bash", "input": {"command": "echo one"}}],
+        [{"name": "bash", "input": {"command": "echo two"}}],
+        [{"name": "bash", "input": {"command": "echo three"}}],
+        [{"name": "finish", "input": {"status": "done", "summary": "done"}}],
+    ]
+    base = HarnessConfig.load(REPO / "harness")
+    policy = copy.deepcopy(base.loop_policy)
+    policy["limits"]["max_steps"] = 5
+    policy["limits"]["max_tokens_per_task"] = 5000
+    policy["testing"]["run_tests_before_finish"] = False
+    policy["context"].update({
+        "budget_compaction_trigger_ratio": 0.05,
+        "budget_keep_last_n_tool_turns": 1,
+        "budget_ledger_max_chars": 500,
+    })
+    cfg = HarnessConfig(
+        system_prompt=base.system_prompt,
+        tool_descriptions=base.tool_descriptions,
+        loop_policy=policy,
+        version="test-budget-compaction",
+    )
+
+    async with LocalSandbox(workspace) as sandbox:
+        trace = TraceWriter(tmp_path / "traces", task_id="budget-compaction")
+        llm = ScriptedLLM(script)
+        result = await AgentLoop(
+            cfg, llm, ToolExecutor(sandbox), trace
+        ).run("Run three commands.")
+
+    assert result.exit_reason == "finished_done"
+    # Without complete-turn compaction the calls would see 1, 3, 5, 7 messages.
+    assert llm.message_counts_seen == [1, 3, 3, 3]
+    assert "Runtime budget pressure" in llm.systems_seen[2]
+    compactions = [
+        event for event in load_trace(trace.path)
+        if event["event_type"] == "compaction"
+    ]
+    assert compactions
+    assert all(
+        event["payload"]["strategy"] == "budget_aware_tool_turn_ledger"
+        for event in compactions
+    )
 
 
 @pytest.mark.asyncio

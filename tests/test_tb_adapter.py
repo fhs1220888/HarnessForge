@@ -11,6 +11,7 @@ import pytest
 
 from harnessforge.eval.tb_adapter import (
     TB_HOLDOUT_V1,
+    TB_HOLDOUT_V2,
     TB_SUBSET_V1,
     TBTask,
     discover_tb_tasks,
@@ -86,3 +87,7 @@ def test_holdout_is_pinned_and_disjoint_from_development_subset():
     assert len(TB_HOLDOUT_V1) == 8
     assert len(set(TB_HOLDOUT_V1)) == len(TB_HOLDOUT_V1)
     assert set(TB_HOLDOUT_V1).isdisjoint(TB_SUBSET_V1)
+    assert len(TB_HOLDOUT_V2) == 8
+    assert len(set(TB_HOLDOUT_V2)) == len(TB_HOLDOUT_V2)
+    assert set(TB_HOLDOUT_V2).isdisjoint(TB_SUBSET_V1)
+    assert set(TB_HOLDOUT_V2).isdisjoint(TB_HOLDOUT_V1)
