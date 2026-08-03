@@ -23,4 +23,7 @@ jobs:
         run: python -m harnessforge.demo
       - name: Test
         # Unit tests + mock-LLM end-to-end loops. No API key, Docker, or API cost.
-        run: pytest -q
+        run: pytest -q --junitxml=.pytest-results.xml
+      - name: Annotate test failures
+        if: failure()
+        run: python scripts/annotate_pytest_failures.py .pytest-results.xml
