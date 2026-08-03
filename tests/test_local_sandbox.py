@@ -27,7 +27,10 @@ async def test_timeout_reaps_shell_and_child_processes(tmp_path):
 
     assert result.exit_code == 124
     assert "timed out after 0.05s" in result.stderr
-    assert time.monotonic() - started < 1
+    # Shared CI runners can be descheduled while the killed process group is
+    # being reaped.  Keep this bound far below the leaked child's 60-second
+    # lifetime without turning scheduler latency into a flaky correctness test.
+    assert time.monotonic() - started < 5
 
 
 @pytest.mark.asyncio
