@@ -9,6 +9,7 @@
     "neutral": "#8d99ae"
   },
   "sources": [
+    "docs/data/tb_holdout_v1_verifier_scorecard.json",
     "docs/data/tb_baseline_summary.json",
     "docs/data/tb_finishfix_summary.json",
     "docs/data/tb_selfverify_summary.json",
@@ -16,6 +17,8 @@
     "docs/data/tb_base_extra_summary.json",
     "docs/data/native_baseline_v4_summary.json",
     "docs/data/calibration.json",
+    "docs/data/durable_counterfactual_multitask.json",
+    "docs/data/budget_compaction_dev_pilot.json",
     "runs/tb_baseline/results.jsonl",
     "runs/tb_base_extra/results.jsonl",
     "runs/tb_finishfix/results.jsonl",

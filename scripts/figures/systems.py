@@ -29,6 +29,7 @@ from .data import (
     TB_REGRESSION_GUARDS,
     baseline,
     calibration,
+    load_json,
 )
 
 
@@ -609,13 +610,16 @@ def chart_reliability_surface(slug: str):
 
 
 def chart_readme_hero(slug: str):
-    """Wide, compact README summary of baseline pressure and verified efficiency."""
+    """Wide README summary with measured capability and scoped mechanisms."""
     configure_style()
-    b = baseline()
-    pass_effect = SELFVERIFY_EFFECTS["pass_rate"]
+    holdout = load_json("tb_holdout_v1_verifier_scorecard.json")
+    prefix = load_json("durable_counterfactual_multitask.json")["aggregate"]
+    compaction = load_json("budget_compaction_dev_pilot.json")
     steps_effect = SELFVERIFY_EFFECTS["steps_per_run"]
-    n_scored = int(b["n_scored"])
-    pass_count = round(float(b["pass_rate"]) * n_scored)
+    n_scored = int(holdout["scored_runs"])
+    pass_count = int(holdout["passed_runs"])
+    pass_rate = float(holdout["pass_rate"])
+    ci_low, ci_high = (float(value) for value in holdout["wilson_95"])
 
     fig = plt.figure(figsize=(14.4, 4.8))
     grid = fig.add_gridspec(
@@ -626,7 +630,7 @@ def chart_readme_hero(slug: str):
         bottom=0.17,
         top=0.77,
         wspace=0.30,
-        width_ratios=[0.92, 1.28, 1.72],
+        width_ratios=[1.08, 1.20, 1.62],
     )
     ax_kpi = fig.add_subplot(grid[0, 0])
     ax_exit = fig.add_subplot(grid[0, 1])
@@ -634,17 +638,17 @@ def chart_readme_hero(slug: str):
 
     add_chart_title(
         fig,
-        "HarnessForge — Evidence Under Constraint",
-        f"Terminal-Bench 2.0 subset · {b['n_tasks']} tasks · {b['tb_max_steps']}-step budget · measured effects, not aspiration",
+        "HarnessForge — Measured Reliability Under Constraint",
+        "External capability first · repeated-run stability second · mechanism evidence kept in scope",
         x=0.055,
     )
 
     ax_kpi.axis("off")
-    ax_kpi.text(0.0, 0.96, "BASELINE", transform=ax_kpi.transAxes, fontsize=9.0, fontweight=400, color=GRAY, va="top")
+    ax_kpi.text(0.0, 0.96, "EXTERNAL HOLDOUT", transform=ax_kpi.transAxes, fontsize=9.0, fontweight=400, color=GRAY, va="top")
     ax_kpi.text(
         0.0,
         0.76,
-        f"{b['pass_rate']:.1%}",
+        f"{pass_rate:.2%}",
         transform=ax_kpi.transAxes,
         fontsize=34,
         fontweight=400,
@@ -655,85 +659,105 @@ def chart_readme_hero(slug: str):
     ax_kpi.text(
         0.0,
         0.35,
-        f"{pass_count} / {n_scored} scored runs",
+        f"{pass_count} / {n_scored} independent runs",
         transform=ax_kpi.transAxes,
         fontsize=9.5,
         color=GRAY,
         va="top",
     )
     ax_kpi.plot([0.0, 0.78], [0.23, 0.23], transform=ax_kpi.transAxes, color=LIGHT_GRAY, linewidth=1.0)
-    ax_kpi.plot([0.0, 0.78 * float(b["pass_rate"])], [0.23, 0.23], transform=ax_kpi.transAxes, color=TEAL, linewidth=4.0)
-    ax_kpi.text(0.0, 0.12, "External verification · 2 repeats", transform=ax_kpi.transAxes, fontsize=8.8, color=GRAY, va="top")
+    ax_kpi.plot([0.0, 0.78 * pass_rate], [0.23, 0.23], transform=ax_kpi.transAxes, color=TEAL, linewidth=4.0)
+    ax_kpi.text(
+        0.0,
+        0.12,
+        f"Wilson 95% CI  {ci_low:.1%}–{ci_high:.1%}\n0 / {n_scored} infrastructure errors",
+        transform=ax_kpi.transAxes,
+        fontsize=8.8,
+        color=GRAY,
+        va="top",
+        linespacing=1.55,
+    )
 
-    exit_order = ["max_steps", "finished_done", "max_tokens"]
-    exit_labels = ["max_steps", "finished_done", "max_tokens"]
-    exit_counts = [int(b["exit_reasons"].get(reason, 0)) for reason in exit_order]
-    exit_colors = [CORAL, TEAL, AMBER]
+    stability = holdout["stability"]
+    stability_rows = [
+        ("pass 2/2", int(stability["stable_pass_2_of_2"]), TEAL),
+        ("mixed 1/2", int(stability["mixed_1_of_2"]), AMBER),
+        ("fail 0/2", int(stability["stable_fail_0_of_2"]), CORAL),
+    ]
     y_positions = [2, 1, 0]
-    bars = ax_exit.barh(y_positions, exit_counts, color=exit_colors, height=0.48, zorder=3)
+    bars = ax_exit.barh(
+        y_positions,
+        [row[1] for row in stability_rows],
+        color=[row[2] for row in stability_rows],
+        height=0.48,
+        zorder=3,
+    )
     ax_exit.set_yticks(y_positions)
-    ax_exit.set_yticklabels(exit_labels, fontsize=9.4)
-    ax_exit.set_xlim(0, n_scored)
-    ax_exit.set_xticks([0, 10, 20, 30, 40])
-    ax_exit.set_xlabel("runs", fontsize=9.0)
-    ax_exit.set_title("Why runs ended · step cap dominates", loc="left", fontsize=11.0, fontweight=400, pad=12)
+    ax_exit.set_yticklabels([row[0] for row in stability_rows], fontsize=9.4)
+    ax_exit.set_xlim(0, int(holdout["task_count"]))
+    ax_exit.set_xticks([0, 2, 4, 6, 8])
+    ax_exit.set_xlabel("tasks · two runs each", fontsize=9.0)
+    ax_exit.set_title("Repeat stability", loc="left", fontsize=11.0, fontweight=400, pad=12)
     style_axis(ax_exit, grid="x", keep=("bottom",))
-    for bar, count in zip(bars, exit_counts):
-        share = count / n_scored
+    for bar, (_, count, _) in zip(bars, stability_rows):
         ax_exit.text(
-            min(count + 0.7, n_scored - 0.3),
+            count + 0.16,
             bar.get_y() + bar.get_height() / 2,
-            f"{count} · {share:.1%}",
-            ha="left" if count < n_scored - 4 else "right",
+            str(count),
+            ha="left",
             va="center",
             fontsize=9.0,
             fontweight=400,
             color=INK,
         )
 
-    metric_rows = [
-        ("Pass rate (pp)", pass_effect, GRAY, "o", "CI crosses 0"),
-        ("Steps/run (%)", steps_effect, TEAL, "s", "CI excludes 0"),
+    mechanism_rows = [
+        ("Steps / run", abs(float(steps_effect["delta"]) * 100), "external paired · CI excludes 0", TEAL),
+        ("Fork tokens", float(prefix["token_savings_fraction"]) * 100, "vs full rerun · internal paired · 5 tasks", TEAL),
+        (
+            "First compaction",
+            float(compaction["first_compaction"]["reduction_percent"]),
+            "dev pilot · unscored",
+            AMBER,
+        ),
     ]
-    metric_y = [1, 0]
-    for y, (label, effect, color, marker, inference) in zip(metric_y, metric_rows):
-        delta = float(effect["delta"]) * 100
-        lo = float(effect["lo"]) * 100
-        hi = float(effect["hi"]) * 100
-        ax_effect.plot([lo, hi], [y, y], color=color, linewidth=2.0, zorder=3)
-        ax_effect.plot([lo, lo], [y - 0.08, y + 0.08], color=color, linewidth=1.2, zorder=3)
-        ax_effect.plot([hi, hi], [y - 0.08, y + 0.08], color=color, linewidth=1.2, zorder=3)
-        ax_effect.scatter(delta, y, s=58, marker=marker, color=color, edgecolor=WHITE, linewidth=0.9, zorder=4)
-        unit = "pp" if "Pass" in label else "%"
-        sign = "+" if delta > 0 else ""
+    metric_y = [2, 1, 0]
+    bars = ax_effect.barh(
+        metric_y,
+        [row[1] for row in mechanism_rows],
+        color=[row[3] for row in mechanism_rows],
+        height=0.42,
+        zorder=3,
+    )
+    for bar, (_, value, scope, _) in zip(bars, mechanism_rows):
         ax_effect.text(
-            -14.7,
-            y + 0.29,
-            f"{sign}{delta:.1f}{unit}  [{lo:+.1f}, {hi:+.1f}]",
+            value + 1.6,
+            bar.get_y() + bar.get_height() / 2,
+            f"−{value:.1f}%",
             ha="left",
             va="center",
             fontsize=9.0,
+            fontweight=400,
             color=INK,
         )
         ax_effect.text(
-            0.95,
-            y + 0.16,
-            inference,
+            0.99,
+            bar.get_y() + bar.get_height() / 2 - 0.25,
+            scope,
             transform=ax_effect.get_yaxis_transform(),
             ha="right",
             va="center",
-            fontsize=8.8,
-            color=color,
+            fontsize=7.9,
+            color=GRAY,
         )
 
-    ax_effect.axvline(0, color=INK, linewidth=1.0, zorder=1)
-    ax_effect.set_xlim(-15, 31)
-    ax_effect.set_ylim(-0.55, 1.55)
+    ax_effect.set_xlim(0, 80)
+    ax_effect.set_ylim(-0.55, 2.55)
     ax_effect.set_yticks(metric_y)
-    ax_effect.set_yticklabels([row[0] for row in metric_rows], fontsize=9.4)
-    ax_effect.set_xticks([-10, 0, 10, 20, 30])
-    ax_effect.set_xlabel("effect vs matched control · pp for pass rate, % for steps", fontsize=8.8)
-    ax_effect.set_title("Selfverify effect (95% CI)", loc="left", fontsize=11.0, fontweight=400, pad=12)
+    ax_effect.set_yticklabels([row[0] for row in mechanism_rows], fontsize=9.2)
+    ax_effect.set_xticks([0, 20, 40, 60, 80])
+    ax_effect.set_xlabel("reduction (%) · denominators differ", fontsize=8.8)
+    ax_effect.set_title("Efficiency mechanisms", loc="left", fontsize=11.0, fontweight=400, pad=12)
     style_axis(ax_effect, grid="x", keep=("bottom",))
     # Hairline separators keep the hero readable without card chrome.
     for x in (0.275, 0.565):
@@ -741,7 +765,7 @@ def chart_readme_hero(slug: str):
 
     add_source(
         fig,
-        "Sources: docs/data/tb_baseline_summary.json · pooled paired selfverify comparison reported in EXPERIMENTS.md",
+        "Measured: holdout-v1, paired selfverify, same-prefix benchmark · Unscored mechanism: budget-compaction development pilot",
         x=0.055,
     )
     return save_figure(fig, slug)

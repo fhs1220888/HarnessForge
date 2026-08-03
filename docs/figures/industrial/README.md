@@ -24,6 +24,6 @@ reports.
 | 12 | [Task Classification Matrix](12-task-classification.png) | Baseline class and validation role |
 | 13 | [Trace Event Timeline](13-trace-event-timeline.png) | Schematic trace schema |
 | 14 | [Reliability Surface](14-reliability-surface.png) | Categorical maturity assessment |
-| 15 | [README Hero](15-readme-hero.png) | Baseline, budget pressure, and confirmed efficiency |
+| 15 | [README Hero](15-readme-hero.png) | Frozen holdout, repeat stability, and scoped efficiency mechanisms |
 
 The `manifest.json` file records the generator, source set, palette, and output paths.

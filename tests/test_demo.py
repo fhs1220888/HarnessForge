@@ -17,6 +17,9 @@ def test_offline_demo_verifies_and_renders_checked_evidence():
     assert "not an official full-suite score" in rendered
     assert "2 calls / 2,845 tokens" in rendered
     assert "DECISION REJECT" in rendered
+    assert "12,271 -> 3,795 estimated tokens (-69.1%)" in rendered
+    assert "forecast_unscored" in rendered
+    assert "neither line is an achieved capability result" in rendered
     assert "Scorecard integrity: VERIFIED" in rendered
 
 

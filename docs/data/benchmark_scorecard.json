@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "scorecard": "HarnessForge benchmark evidence",
   "composite_score": null,
   "composite_score_policy": "Intentionally omitted: capability, efficiency, durability, and evaluation cost have different denominators and failure consequences.",
@@ -183,11 +183,73 @@
     "reason": "underpowered_or_no_confirmed_gain",
     "evidence_grade": "paired-internal-gate-case-study"
   },
+  "context_efficiency_mechanism": {
+    "experiment": "budget-aware context compaction development pilot",
+    "status": "infra_aborted_unscored",
+    "scope": "one Terminal-Bench 2.0 development task; not holdout evidence",
+    "task_id": "qemu-startup",
+    "completed_model_calls": 37,
+    "first_compaction_estimated_tokens_before": 12271,
+    "first_compaction_estimated_tokens_after": 3795,
+    "first_compaction_reduction_percent": 69.1,
+    "dropped_complete_tool_turns": 11,
+    "supported_claims": [
+      "controller activated under cumulative token pressure",
+      "complete old tool turns were replaced by a bounded ledger",
+      "late-trajectory input remained substantially below the pre-trigger peak"
+    ],
+    "unsupported_claims": [
+      "pass-rate improvement",
+      "completion-rate improvement",
+      "causal cost reduction"
+    ],
+    "evidence_grade": "development-partial-mechanism-unscored"
+  },
+  "holdout_v2_forecast": {
+    "status": "forecast_unscored",
+    "benchmark": "Terminal-Bench 2.0 holdout-v2 forecast",
+    "scope": "8 metadata-frozen tasks x 2 hypothetical runs; no v2 API calls",
+    "future_runs": 16,
+    "method": {
+      "model": "Beta-Binomial posterior predictive",
+      "prior": "Jeffreys Beta(0.5, 0.5)",
+      "assumption": "holdout-v2 runs are exchangeable with holdout-v1 runs",
+      "difficulty_adjustment": "none"
+    },
+    "predictive": {
+      "posterior_alpha": 11.5,
+      "posterior_beta": 5.5,
+      "expected_passes": 10.8235,
+      "expected_pass_rate": 0.6765,
+      "median_passes": 11,
+      "central_95_passes": [
+        5,
+        15
+      ],
+      "probability_at_least_8": 0.8951,
+      "probability_at_least_10": 0.7091,
+      "probability_at_least_11": 0.5743
+    },
+    "claims": {
+      "allowed": [
+        "posterior predictive median is 11/16 under exchangeability",
+        "mechanism telemetry supports context reduction"
+      ],
+      "forbidden": [
+        "holdout-v2 achieved a measured pass rate",
+        "the controller causally improves pass rate",
+        "the forecast is an official Terminal-Bench score"
+      ]
+    },
+    "evidence_grade": "offline-forecast-unscored"
+  },
   "claim_policy": [
     "The disjoint repeated Terminal-Bench holdout is the capability headline.",
     "The holdout is not an official full-suite leaderboard submission.",
     "Five-task native experiments support mechanism and gate-behavior claims only.",
     "Confidence intervals and denominators accompany every reported rate or delta.",
-    "A directionally favorable but underpowered candidate is rejected, not promoted."
+    "A directionally favorable but underpowered candidate is rejected, not promoted.",
+    "Ungraded partial runs support mechanism claims only.",
+    "Forecasts never appear as achieved benchmark results."
   ]
 }

@@ -13,6 +13,21 @@ python -m harnessforge.eval.benchmark_scorecard
 pytest -q tests/test_benchmark_scorecard.py
 ```
 
+For Chinese recruiting, the same evidence is packaged as a 30-second project pitch,
+resume bullets, and interview Q&A in [docs/BENCHMARK_ZH.md](docs/BENCHMARK_ZH.md).
+
+![HarnessForge measured evidence](docs/figures/industrial/15-readme-hero.png)
+
+## Evidence ladder
+
+| Tier | Headline | Claim boundary |
+|---|---|---|
+| Measured external capability | **11/16 = 68.75%** on frozen holdout-v1 | Primary capability result; not an official full-suite score |
+| Measured external efficiency | **6.94% fewer steps**, CI excludes zero | Paired intervention result; pass-rate lift remains unconfirmed |
+| Measured system mechanisms | **28.9%** same-prefix token/cost savings; **0** prefix calls replayed after crash | Cost and durability mechanisms; not population-level quality estimates |
+| Unscored development telemetry | First compaction **12,271 → 3,795 estimated tokens (−69.1%)** | Controller activation only; no pass-rate or causal cost claim |
+| Offline forecast | v2 median **11/16**, predictive interval **5–15** | Planning artifact only; no v2 run was scored |
+
 ## 1. External capability benchmark
 
 Terminal-Bench 2.0 `holdout-v1`, 8 metadata-pinned tasks × 2 independent runs,
@@ -98,6 +113,27 @@ it:
 This is the intended self-improvement behavior: a directionally favorable small
 sample does not earn promotion when quality is unconfirmed and efficiency regresses.
 
+## Budget-pressure context controller
+
+One Terminal-Bench development task activated the budget-aware compaction controller
+after cumulative token use crossed its configured threshold. The first compaction
+replaced 11 complete old tool turns with a bounded ledger and reduced estimated
+context from 12,271 to 3,795 tokens (**69.1%**). Across the partial trajectory, 20
+post-trigger calls averaged 6,756.7 input tokens versus a pre-trigger final call of
+18,768.
+
+The run ended with `credit_balance_too_low` after 37 completed calls and before a
+reward was available. It is therefore stored as `infra_aborted_unscored`: it verifies
+that the mechanism activates and bounds late context, but does not support a pass-rate,
+completion-rate, or causal cost-reduction claim.
+
+## Frozen holdout-v2: forecast, not result
+
+No holdout-v2 API call was made. An offline Jeffreys-prior Beta-Binomial forecast,
+based only on holdout-v1, has a posterior-predictive median of 11/16 and a central
+95% interval of 5–15 passes. The forecast is useful for budgeting the next measured
+run; it is not a benchmark score and is excluded from every resume headline.
+
 ## Evidence and claim policy
 
 - [Machine-readable scorecard](docs/data/benchmark_scorecard.json)
@@ -107,6 +143,8 @@ sample does not earn promotion when quality is unconfirmed and efficiency regres
 - [Crash/recovery drill](docs/data/durable_recovery_t01.json)
 - [Multi-task prefix benchmark](docs/data/durable_counterfactual_multitask.json)
 - [Rejected candidate comparison](docs/data/verification_candidate_comparison.json)
+- [Budget-compaction development pilot](docs/data/budget_compaction_dev_pilot.json)
+- [Unscored holdout-v2 forecast](docs/data/tb_holdout_v2_forecast.json)
 
 Claim rules:
 
@@ -116,3 +154,4 @@ Claim rules:
 4. Every rate or delta carries its denominator and interval.
 5. Non-confirmation is not described as equivalence.
 6. A favorable point estimate is rejected when the predeclared gate is not met.
+7. Forecasts and ungraded partial runs never appear as achieved benchmark results.

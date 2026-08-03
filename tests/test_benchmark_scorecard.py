@@ -24,6 +24,8 @@ def test_checked_scorecard_reproduces_from_evidence():
         _read("durable_recovery_t01.json"),
         _read("durable_counterfactual_multitask.json"),
         _read("verification_candidate_comparison.json"),
+        _read("budget_compaction_dev_pilot.json"),
+        _read("tb_holdout_v2_forecast.json"),
     )
 
     assert generated == _read("benchmark_scorecard.json")
@@ -41,4 +43,40 @@ def test_scorecard_rejects_inconsistent_external_denominator():
             _read("durable_recovery_t01.json"),
             _read("durable_counterfactual_multitask.json"),
             _read("verification_candidate_comparison.json"),
+            _read("budget_compaction_dev_pilot.json"),
+            _read("tb_holdout_v2_forecast.json"),
+        )
+
+
+def test_scorecard_rejects_forecast_promoted_to_result():
+    forecast = _read("tb_holdout_v2_forecast.json")
+    forecast["status"] = "measured"
+
+    with pytest.raises(ValueError, match="forecast must remain explicitly unscored"):
+        build_scorecard(
+            _read("tb_baseline_summary.json"),
+            _read("tb_holdout_v1_verifier_scorecard.json"),
+            _read("tb_selfverify_comparison.json"),
+            _read("durable_recovery_t01.json"),
+            _read("durable_counterfactual_multitask.json"),
+            _read("verification_candidate_comparison.json"),
+            _read("budget_compaction_dev_pilot.json"),
+            forecast,
+        )
+
+
+def test_scorecard_rejects_unscored_pilot_with_reward():
+    pilot = _read("budget_compaction_dev_pilot.json")
+    pilot["reward"] = 1
+
+    with pytest.raises(ValueError, match="cannot carry a benchmark outcome"):
+        build_scorecard(
+            _read("tb_baseline_summary.json"),
+            _read("tb_holdout_v1_verifier_scorecard.json"),
+            _read("tb_selfverify_comparison.json"),
+            _read("durable_recovery_t01.json"),
+            _read("durable_counterfactual_multitask.json"),
+            _read("verification_candidate_comparison.json"),
+            pilot,
+            _read("tb_holdout_v2_forecast.json"),
         )

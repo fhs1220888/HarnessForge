@@ -42,6 +42,9 @@ estimates. See [EXPERIMENTS.md](EXPERIMENTS.md) for statistical and tooling cave
 The denominator-checked four-axis view is in [BENCHMARK.md](BENCHMARK.md); its
 [machine-readable scorecard](docs/data/benchmark_scorecard.json) is reproduced by a
 golden test rather than maintained as an unverified marketing table.
+For domestic recruiting and interview wording, use the
+[Chinese benchmark brief](docs/BENCHMARK_ZH.md), which separates measured results,
+mechanism telemetry, and the unscored forecast.
 
 ## Architecture
 
@@ -193,6 +196,7 @@ tasks/                   18 native tasks (bidirectionally verified)
 scripts/                 figure generation, TB image pre-pull
 docs/                    figures, data snapshots, dashboard
   ARCHITECTURE.md        checkpoint, recovery, fork, and promotion invariants
+  BENCHMARK_ZH.md        Chinese recruiter brief, resume bullets, and benchmark Q&A
   RESUME_BULLETS.md      evidence-backed portfolio wording
 EXPERIMENTS.md           full experiment log + calibration table
 ```

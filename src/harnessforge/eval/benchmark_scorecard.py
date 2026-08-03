@@ -37,6 +37,8 @@ def build_scorecard(
     recovery: dict[str, Any],
     prefix_benchmark: dict[str, Any],
     candidate_screen: dict[str, Any],
+    context_pilot: dict[str, Any],
+    holdout_forecast: dict[str, Any],
 ) -> dict[str, Any]:
     scored = sum(len(values) for values in tb_baseline["per_task"].values())
     passes = sum(sum(bool(value) for value in values)
@@ -64,9 +66,19 @@ def build_scorecard(
     max_steps = int(tb_baseline["exit_reasons"].get("max_steps", 0))
     prefix = prefix_benchmark["aggregate"]
     screen = candidate_screen["paired_analysis"]
+    if context_pilot["status"] != "infra_aborted_unscored":
+        raise ValueError("Context pilot must remain explicitly unscored")
+    if context_pilot["scored_runs"] != 0 or context_pilot["reward"] is not None:
+        raise ValueError("Context pilot cannot carry a benchmark outcome")
+    if holdout_forecast["status"] != "forecast_unscored":
+        raise ValueError("Holdout forecast must remain explicitly unscored")
+    if holdout_forecast["source_observation"]["passed_runs"] != holdout_passes:
+        raise ValueError("Holdout forecast source passes do not match holdout evidence")
+    if holdout_forecast["source_observation"]["scored_runs"] != holdout_scored:
+        raise ValueError("Holdout forecast source count does not match holdout evidence")
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "scorecard": "HarnessForge benchmark evidence",
         "composite_score": None,
         "composite_score_policy": (
@@ -170,12 +182,48 @@ def build_scorecard(
             "reason": candidate_screen["verdict"]["classification"],
             "evidence_grade": "paired-internal-gate-case-study",
         },
+        "context_efficiency_mechanism": {
+            "experiment": context_pilot["experiment"],
+            "status": context_pilot["status"],
+            "scope": context_pilot["scope"],
+            "task_id": context_pilot["task_id"],
+            "completed_model_calls": context_pilot["partial_usage"][
+                "completed_model_calls"
+            ],
+            "first_compaction_estimated_tokens_before": context_pilot[
+                "first_compaction"
+            ]["estimated_tokens_before"],
+            "first_compaction_estimated_tokens_after": context_pilot[
+                "first_compaction"
+            ]["estimated_tokens_after"],
+            "first_compaction_reduction_percent": context_pilot[
+                "first_compaction"
+            ]["reduction_percent"],
+            "dropped_complete_tool_turns": context_pilot["first_compaction"][
+                "dropped_tool_turns"
+            ],
+            "supported_claims": context_pilot["supported_claims"],
+            "unsupported_claims": context_pilot["unsupported_claims"],
+            "evidence_grade": "development-partial-mechanism-unscored",
+        },
+        "holdout_v2_forecast": {
+            "status": holdout_forecast["status"],
+            "benchmark": holdout_forecast["benchmark"],
+            "scope": holdout_forecast["scope"],
+            "future_runs": holdout_forecast["future_runs"],
+            "method": holdout_forecast["method"],
+            "predictive": holdout_forecast["predictive"],
+            "claims": holdout_forecast["claims"],
+            "evidence_grade": "offline-forecast-unscored",
+        },
         "claim_policy": [
             "The disjoint repeated Terminal-Bench holdout is the capability headline.",
             "The holdout is not an official full-suite leaderboard submission.",
             "Five-task native experiments support mechanism and gate-behavior claims only.",
             "Confidence intervals and denominators accompany every reported rate or delta.",
-            "A directionally favorable but underpowered candidate is rejected, not promoted."
+            "A directionally favorable but underpowered candidate is rejected, not promoted.",
+            "Ungraded partial runs support mechanism claims only.",
+            "Forecasts never appear as achieved benchmark results."
         ],
     }
 
@@ -195,6 +243,10 @@ def main() -> None:
                         default=data / "durable_counterfactual_multitask.json")
     parser.add_argument("--candidate-screen", type=Path,
                         default=data / "verification_candidate_comparison.json")
+    parser.add_argument("--context-pilot", type=Path,
+                        default=data / "budget_compaction_dev_pilot.json")
+    parser.add_argument("--holdout-forecast", type=Path,
+                        default=data / "tb_holdout_v2_forecast.json")
     parser.add_argument("--out", type=Path,
                         default=data / "benchmark_scorecard.json")
     args = parser.parse_args()
@@ -205,6 +257,8 @@ def main() -> None:
         _read(args.recovery),
         _read(args.prefix_benchmark),
         _read(args.candidate_screen),
+        _read(args.context_pilot),
+        _read(args.holdout_forecast),
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     _write_json_atomic(args.out, scorecard)

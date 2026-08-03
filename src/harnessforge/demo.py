@@ -31,6 +31,8 @@ def verified_scorecard(data_dir: Path = DEFAULT_DATA) -> dict[str, Any]:
         _read(data_dir, "durable_recovery_t01.json"),
         _read(data_dir, "durable_counterfactual_multitask.json"),
         _read(data_dir, "verification_candidate_comparison.json"),
+        _read(data_dir, "budget_compaction_dev_pilot.json"),
+        _read(data_dir, "tb_holdout_v2_forecast.json"),
     )
     checked = _read(data_dir, "benchmark_scorecard.json")
     if generated != checked:
@@ -51,6 +53,8 @@ def render_demo(scorecard: dict[str, Any]) -> str:
     recovery = scorecard["runtime_durability"]
     evaluation = scorecard["evaluation_efficiency"]
     gate = scorecard["candidate_gate_case_study"]
+    context = scorecard["context_efficiency_mechanism"]
+    forecast = scorecard["holdout_v2_forecast"]
 
     pass_ci = outcomes["wilson_ci95"]
     step = efficiency["step_delta"]
@@ -101,6 +105,19 @@ def render_demo(scorecard: dict[str, Any]) -> str:
         f"cost {gate_cost['pct_change']:+.2f}%  "
         f"McNemar p={gate['mcnemar_exact']['two_sided_p_value']:.1f}",
         f"  DECISION {gate['decision'].upper()} — {gate['reason']}",
+        "",
+        "Guarded non-headlines",
+        f"  CONTEXT first compaction "
+        f"{context['first_compaction_estimated_tokens_before']:,} -> "
+        f"{context['first_compaction_estimated_tokens_after']:,} estimated tokens "
+        f"(-{context['first_compaction_reduction_percent']:.1f}%); "
+        f"{context['status']}",
+        f"  FORECAST v2 median {forecast['predictive']['median_passes']}/"
+        f"{forecast['future_runs']}, predictive interval "
+        f"{forecast['predictive']['central_95_passes'][0]}-"
+        f"{forecast['predictive']['central_95_passes'][1]}; "
+        f"{forecast['status']}",
+        "  POLICY neither line is an achieved capability result",
         "",
         "Evidence: BENCHMARK.md and docs/data/benchmark_scorecard.json",
     ]
