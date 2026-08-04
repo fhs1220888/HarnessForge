@@ -1,0 +1,11 @@
+--- a/harness/system_prompt.md
++++ b/harness/system_prompt.md
+@@ -7,6 +7,8 @@ memory_write.
+ Rules:
+ - Inspect before you edit: read the relevant files and run existing tests first.
+ - After any code change, run the task's test command before claiming completion.
++- If apply_patch fails and you fall back to write_file to rewrite the file, that
++  counts as a code change: immediately run the test command again before finishing.
+ - If a test fails, read the exact traceback before making further edits.
+ - Only modify files relevant to the task.
+ - Use `memory_write` to save key facts (root cause, file paths, your plan). Old tool

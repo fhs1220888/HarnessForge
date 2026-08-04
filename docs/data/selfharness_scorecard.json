@@ -3,17 +3,17 @@
   "scorecard": "HarnessForge self-harness evidence",
   "positioning": "Evidence-gated self-improving coding-agent harness: trace mining -> candidate generation -> isolated paired evaluation -> promotion or rejection.",
   "closed_loop_execution": {
-    "search_rounds_with_candidate_evidence": 2,
-    "candidates_evaluated": 7,
+    "search_rounds_with_candidate_evidence": 3,
+    "candidates_evaluated": 6,
     "small_gate_acceptances": 1,
-    "rejections": 6,
-    "completed_full_suite_rounds": 1,
+    "rejections": 5,
+    "completed_full_suite_rounds": 3,
     "observed_round1_pass_rate": {
-      "baseline": 0.667,
-      "final": 0.639,
-      "winners": 0
+      "baseline": 0.556,
+      "final": 0.75,
+      "winners": 1
     },
-    "evidence_grade": "live-model-multi-round-candidate-gating-partial"
+    "evidence_grade": "live-model-completed-autonomous-campaign"
   },
   "confirmed_self_improvement": {
     "metric": "steps_per_run",
@@ -64,8 +64,8 @@
       "reason": "requires a completed multi-round campaign plus a matched round-0/final comparison with sufficient sample and CI lower bound > 0"
     },
     "multi_round_unattended_execution": {
-      "confirmed": false,
-      "reason": "no completed audited campaign with at least two automatic round transitions"
+      "confirmed": true,
+      "reason": "completed isolated campaign audit"
     },
     "multi_round_unattended_improvement": {
       "confirmed": false,
@@ -105,7 +105,7 @@
     "campaign_lineage_match": false
   },
   "resume_safe_claims": [
-    "Built and executed a two-round candidate search with seven live-model gates.",
+    "Completed a three-round autonomous search with six live-model gates.",
     "Confirmed a 6.94% step reduction on an external paired benchmark.",
     "Rejected attractive small-sample gains when uncertainty or cost regressed."
   ],

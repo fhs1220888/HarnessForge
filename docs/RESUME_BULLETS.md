@@ -13,8 +13,9 @@ applications, see the ready-to-use wording in
   test suite.
 - Built an evidence-gated Self-Harness loop that mines failed trajectories, generates
   isolated declarative candidates, and promotes or rejects them through paired target
-  and regression evaluation; executed 2 search rounds / 7 live-model candidate gates
-  and confirmed 6.94% fewer steps on an external paired benchmark.
+  and regression evaluation; completed 3 autonomous rounds / 6 live-model candidate
+  gates with 2 automatic transitions, and confirmed 6.94% fewer steps on an external
+  paired benchmark.
 - Evaluated the harness on a frozen Terminal-Bench 2.0 holdout (8 unseen tasks ×
   2 independent runs): **11/16 = 68.75%** pass rate (Wilson 95% CI 44.4–85.8%),
   zero infrastructure errors, and a denominator-checked, reproducible scorecard.
@@ -58,6 +59,7 @@ episodes can be resumed or forked from an exact committed model/workspace state.
 - Multi-task same-prefix benchmark: `docs/data/durable_counterfactual_multitask.json`
 - Four-axis scorecard: `docs/data/benchmark_scorecard.json`
 - Self-Harness claim scorecard: `docs/data/selfharness_scorecard.json`
+- Completed campaign scorecard: `docs/data/selfharness_campaign_v2_scorecard.json`
 - Self-Harness causal proof protocol: `docs/SELF_HARNESS_EVIDENCE.md`
 - Chinese recruiter/interview package: `docs/BENCHMARK_ZH.md`
 - Rejected candidate gate case: `docs/data/verification_candidate_comparison.json`

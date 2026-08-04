@@ -71,6 +71,24 @@ def build_selfharness_scorecard(
     completed_full_suite_rounds = (
         int(campaign_report["rounds_completed"]) if campaign_completed else 1
     )
+    campaign_candidate_count = (
+        sum(int(row.get("n_candidates", 0)) for row in campaign_report["round_reports"])
+        if campaign_completed
+        else len(verdicts)
+    )
+    campaign_winner_count = (
+        sum(int(row.get("n_winners", 0)) for row in campaign_report["round_reports"])
+        if campaign_completed
+        else len(accepted)
+    )
+    campaign_round_count = (
+        int(campaign_report["rounds_completed"])
+        if campaign_completed
+        else len(nonempty_rounds)
+    )
+    observed_first_round = (
+        campaign_report["round_reports"][0] if campaign_completed else round_report
+    )
     causal_gate_passed = bool(
         causal_proof
         and causal_proof.get("protocol_match")
@@ -117,17 +135,21 @@ def build_selfharness_scorecard(
             "candidate generation -> isolated paired evaluation -> promotion or rejection."
         ),
         "closed_loop_execution": {
-            "search_rounds_with_candidate_evidence": len(nonempty_rounds),
-            "candidates_evaluated": len(verdicts),
-            "small_gate_acceptances": len(accepted),
-            "rejections": len(rejected),
+            "search_rounds_with_candidate_evidence": campaign_round_count,
+            "candidates_evaluated": campaign_candidate_count,
+            "small_gate_acceptances": campaign_winner_count,
+            "rejections": campaign_candidate_count - campaign_winner_count,
             "completed_full_suite_rounds": completed_full_suite_rounds,
             "observed_round1_pass_rate": {
-                "baseline": round_report["baseline"]["pass_rate"],
-                "final": round_report["final"]["pass_rate"],
-                "winners": round_report["n_winners"],
+                "baseline": observed_first_round["baseline"]["pass_rate"],
+                "final": observed_first_round["final"]["pass_rate"],
+                "winners": observed_first_round["n_winners"],
             },
-            "evidence_grade": "live-model-multi-round-candidate-gating-partial",
+            "evidence_grade": (
+                "live-model-completed-autonomous-campaign"
+                if campaign_completed
+                else "live-model-multi-round-candidate-gating-partial"
+            ),
         },
         "confirmed_self_improvement": {
             "metric": "steps_per_run",
@@ -236,7 +258,11 @@ def build_selfharness_scorecard(
             "campaign_lineage_match": campaign_lineage_match,
         },
         "resume_safe_claims": [
-            "Built and executed a two-round candidate search with seven live-model gates.",
+            (
+                "Completed a three-round autonomous search with six live-model gates."
+                if campaign_completed
+                else "Built and executed a two-round candidate search with seven live-model gates."
+            ),
             "Confirmed a 6.94% step reduction on an external paired benchmark.",
             "Rejected attractive small-sample gains when uncertainty or cost regressed.",
         ],
@@ -290,7 +316,11 @@ def main() -> None:
         type=Path,
         default=Path("docs/data/calibration.json"),
     )
-    parser.add_argument("--campaign-report", type=Path)
+    parser.add_argument(
+        "--campaign-report",
+        type=Path,
+        default=Path("docs/data/selfharness_campaign_v2_report.json"),
+    )
     parser.add_argument("--causal-proof", type=Path)
     parser.add_argument(
         "--out",

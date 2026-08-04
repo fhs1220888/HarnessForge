@@ -36,7 +36,7 @@ recovery, and feedback loops — not prompt tricks.
 |---|---:|---|
 | Terminal-Bench 2.0 holdout-v1 | **11/16 = 68.75%**, CI [44.4%, 85.8%] | 8 metadata-pinned unseen tasks × 2; Sonnet 5 + verifier; 0 infra errors |
 | Terminal-Bench 2.0 development subset | **19/40 = 47.5%**, CI [32.9%, 62.5%] | 20 pinned tasks × 2; Haiku 4.5 baseline; 0 infra errors |
-| Self-Harness search | **2 rounds / 7 candidate gates** | 1 small-gate acceptance, 6 rejections; second-round final suite incomplete |
+| Self-Harness search | **3 rounds / 6 candidate gates** | completed with 2 automatic transitions; 1 promotion, 5 rejections, 0 manual interventions |
 | selfverify intervention | **−6.9% steps**, 95% CI [−13.3%, −1.6%] | paired aggregate experiment |
 | same-prefix candidate screening | **−28.9% tokens/cost**, paired CI excludes 0 | 5-task mechanism benchmark |
 | controlled process crash | **2,845 paid tokens restored**, grader 2/2 | one-task recovery drill |

@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "experiment": "autonomous_self_harness_campaign",
+  "status": "completed",
+  "protocol": {
+    "rounds_planned": 3,
+    "repeats": 2,
+    "max_proposals_per_round": 4,
+    "candidates_per_pattern": 2,
+    "sandbox": "local",
+    "regression_tasks": [
+      "t01_fix_off_by_one",
+      "t05_fix_regex",
+      "t09_fix_infinite_loop"
+    ],
+    "initial_baseline": null,
+    "execution": "isolated_campaign_harness; automatic transitions between rounds"
+  },
+  "rounds_completed": 3,
+  "current_round": null,
+  "resume_count": 0,
+  "recovered_completed_rounds": 0,
+  "autonomous_round_transitions": 2,
+  "repository_harness_mutated": false,
+  "pass_rate_trajectory": [0.556, 0.75, 0.639, 0.722],
+  "round_reports": [
+    {
+      "baseline": {
+        "pass_rate": 0.556,
+        "cost_usd": 0.9,
+        "harness_version": "cd2d29eae108"
+      },
+      "final": {
+        "pass_rate": 0.75,
+        "cost_usd": 0.94,
+        "harness_version": "a6a55ef4f4bf"
+      },
+      "n_candidates": 2,
+      "n_patterns": 2,
+      "n_winners": 1,
+      "winners": ["prop-88f1089f"],
+      "calibration": [
+        {
+          "proposal_id": "prop-88f1089f",
+          "candidate_group": "malformed-patch-fallback-without-verification",
+          "predicted_delta": 0.08,
+          "observed_delta": 0.5,
+          "accepted": true,
+          "winner": true
+        },
+        {
+          "proposal_id": "prop-cbee648b",
+          "candidate_group": "fix-attempt-without-reverification-loop",
+          "predicted_delta": 0.07,
+          "observed_delta": -0.167,
+          "accepted": false,
+          "winner": false
+        }
+      ]
+    },
+    {
+      "baseline": {
+        "pass_rate": 0.75,
+        "cost_usd": 0.94,
+        "harness_version": "a6a55ef4f4bf"
+      },
+      "final": {
+        "pass_rate": 0.639,
+        "cost_usd": 0.91,
+        "harness_version": "a6a55ef4f4bf"
+      },
+      "n_candidates": 3,
+      "n_patterns": 3,
+      "n_winners": 0,
+      "winners": [],
+      "calibration": [
+        {
+          "proposal_id": "prop-e246296d",
+          "candidate_group": "malformed-patch-retry-loop",
+          "predicted_delta": 0.1,
+          "observed_delta": -0.5,
+          "accepted": false,
+          "winner": false
+        },
+        {
+          "proposal_id": "prop-fcdc2d5c",
+          "candidate_group": "no-final-fix-verification",
+          "predicted_delta": 0.08,
+          "observed_delta": null,
+          "accepted": false,
+          "winner": false
+        },
+        {
+          "proposal_id": "prop-2f4ae6cc",
+          "candidate_group": "diagnostic-loop-without-decisive-edit",
+          "predicted_delta": 0.05,
+          "observed_delta": 0.0,
+          "accepted": false,
+          "winner": false
+        }
+      ]
+    },
+    {
+      "baseline": {
+        "pass_rate": 0.639,
+        "cost_usd": 0.91,
+        "harness_version": "a6a55ef4f4bf"
+      },
+      "final": {
+        "pass_rate": 0.722,
+        "cost_usd": 0.91,
+        "harness_version": "a6a55ef4f4bf"
+      },
+      "n_candidates": 1,
+      "n_patterns": 1,
+      "n_winners": 0,
+      "winners": [],
+      "calibration": [
+        {
+          "proposal_id": "prop-7f5ffce9",
+          "candidate_group": "no-recovery-after-test-failure",
+          "predicted_delta": 0.08,
+          "observed_delta": 0.0,
+          "accepted": false,
+          "winner": false
+        }
+      ]
+    }
+  ],
+  "error": null
+}

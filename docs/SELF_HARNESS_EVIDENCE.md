@@ -25,13 +25,13 @@ pytest -q tests/test_selfharness_evidence.py tests/test_selfharness_proof.py \
 
 | Self-Harness property | Evidence | Status |
 |---|---|---|
-| Closed-loop search | 2 rounds with candidate artifacts; 7 live-model gates | demonstrated |
-| Selective promotion | 1 small-gate acceptance, 6 rejections | demonstrated |
+| Closed-loop search | 3 completed rounds; 6 live-model gates; 2 automatic transitions | confirmed |
+| Selective promotion | 1 promotion, 5 rejections | demonstrated |
 | Cross-round memory | rejected and also-ran proposals persisted for later prompts | demonstrated in code and tests |
 | Measured self-improvement | Terminal-Bench paired steps/run **−6.94%**, 95% interval excludes zero | confirmed for efficiency |
 | Noise resistance | an apparent 4/5 vs 3/5 candidate was rejected when CI crossed zero and token/cost regressed | demonstrated |
 | Overall pass-rate uplift | paired delta +6.67 pp, CI [−10.0, +26.67] pp | not confirmed |
-| Long-running unattended campaign | second-round candidate validation exists, but its final full-suite evaluation did not complete | not confirmed |
+| Multi-round unattended execution | 3 rounds, 3 final full-suite evaluations, 0 manual interventions | confirmed |
 | 68.75% as causal uplift | holdout and development baseline used different model/task/budget protocols | not a causal comparison |
 
 This distinction is deliberate. A self-improving system is unsafe if it treats every
@@ -40,21 +40,29 @@ improvement only when the predeclared metric and regression gate pass.
 
 ## Existing multi-round evidence
 
-The checked-in search artifacts contain two rounds and seven candidate evaluations:
+The checked-in campaign audit contains three completed rounds and six candidate gates:
 
-- Round 1: four candidates, all rejected; completed final-suite report.
-- Round 2: three candidates, one accepted by the small target/regression gate and two
-  rejected; the final full-suite evaluation was interrupted before a campaign-level
-  result could be produced.
+- Round 1: two candidates, one promoted and one rejected; Pass Rate 55.6% -> 75.0%.
+- Round 2: three candidates, all rejected; the unchanged Harness scored 63.9%, exposing
+  substantial repeat-to-repeat variance rather than a real Harness regression.
+- Round 3: one candidate, rejected after zero targeted gain and one regression flip;
+  the unchanged final Harness scored 72.2%.
+- Across the full campaign: 244 agent task-runs, 1 promotion / 5 rejections, zero
+  API/infra/timeout outcomes, and $6.1404 recorded agent-execution cost. Meta-layer
+  mining/proposal cost was not captured by the historical meter and is not included.
 - Earlier calibration exposed a false positive: a candidate predicted at +8 pp and
   observed at +100 pp on a tiny validation set reproduced at approximately zero in a
   9-task × 3-repeat controlled A/B, so it was reverted.
 
 The current resume-safe claim is therefore:
 
-> Built and executed a two-round Self-Harness search with seven live-model candidate
-> gates; confirmed a 6.94% step-efficiency improvement on an external paired benchmark
-> and rejected candidates whose apparent quality gains were uncertain or inefficient.
+> Completed a three-round unattended Self-Harness campaign with six live-model gates
+> and two automatic round transitions; promoted one candidate, rejected five, and
+> confirmed a separate 6.94% step-efficiency improvement on an external paired benchmark.
+
+The development-suite round-0/final delta was +16.67 pp with paired 95% interval
+[0, +36.11] pp. It is not a causal holdout result because the same tasks informed the
+search and the interval lower bound is not above zero.
 
 ## Crash-safe autonomous campaign
 
@@ -156,8 +164,8 @@ three headline questions separate:
 - `multi_round_unattended_improvement`
 - `holdout_68_75_is_causal_uplift`
 
-The current checked-in values are false, with evidence-backed reasons. Tests prevent a
+The unattended-execution value is now true; the Pass Rate and causal-uplift values
+remain false with evidence-backed reasons. Tests prevent a
 crossing-zero efficiency interval or a favorable-but-rejected candidate from silently
-becoming a confirmed claim. A future completed campaign audit can confirm unattended
-multi-round execution; only a matched final holdout comparison can confirm causal
+becoming a confirmed claim. Only a matched final holdout comparison can confirm causal
 Pass Rate improvement.

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "source_revision": "c9380454cba4b5da2843c5ca1e4316da73ad0841",
+  "round0_harness_version": "cd2d29eae108",
+  "final_harness_version": "a6a55ef4f4bf",
+  "component_sha256": {
+    "round0": {
+      "loop_policy.yaml": "7a1822e7b59d31513606abb3b7e2bef78d59b37a92127fbbe1f866460bee846f",
+      "system_prompt.md": "5dcca5a1815f904e4402b928bc0612accb644b232fce4fbc851415f77add33f1",
+      "tool_descriptions.yaml": "173b4a3370c906507d646647c37e48fc973b681be60a49d8cea6d2d122ac505d"
+    },
+    "final": {
+      "loop_policy.yaml": "7a1822e7b59d31513606abb3b7e2bef78d59b37a92127fbbe1f866460bee846f",
+      "system_prompt.md": "c90e6efb21dc068556be77bb40e87382424786a9758c40be6fb4c4faed6c4f73",
+      "tool_descriptions.yaml": "173b4a3370c906507d646647c37e48fc973b681be60a49d8cea6d2d122ac505d"
+    }
+  },
+  "promoted_proposal": "prop-88f1089f",
+  "patch_file": "promoted.patch"
+}

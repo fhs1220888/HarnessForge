@@ -63,10 +63,11 @@ best-sample selection，所以最终报告固定为全部 16 次的 11/16。
 
 ## Self-Harness：项目的核心卖点
 
-项目已经真实执行过两轮候选搜索，共完成 7 个 live-model candidate gates：第一轮
-4 个候选全部拒绝；第二轮 3 个候选中 1 个通过小型 target/regression gate、2 个被
-拒绝，但第二轮最终全套评测因运行中断没有完成。因此目前可以证明多轮搜索、候选
-隔离、自动门禁和跨轮失败记忆已经工作，不能声称多轮 Pass Rate 持续提升。
+项目已经完整执行 3 轮无人干预候选搜索，共完成 6 个 live-model candidate gates 和
+2 次自动轮次切换：1 个候选晋升、5 个拒绝，3 轮 final full-suite 均完成，仓库 Harness
+没有被搜索过程修改。全程执行 244 个 agent task-runs，记录 agent 成本 $6.1404，
+API/infra/timeout 结果均为 0。开发集轨迹为 55.6% → 75.0% → 63.9% → 72.2%；相同
+Harness 在后两轮仍有明显波动，因此不能把逐轮点估计包装成“持续提高”。
 
 当前确认的 Self-Improvement 是效率维度：Terminal-Bench 外部配对实验将执行步骤
 显著降低 **6.94%**，95% 区间不跨 0；同一批实验的 Pass Rate 点估计为 +6.67 个
@@ -94,8 +95,8 @@ Pass Rate 轨迹和晋升记录。`--resume` 会拒绝协议漂移；若单轮�
   token/cost ledger 在 turn boundary 原子提交；受控进程崩溃后复用 2 次调用、
   2,845 个已付费 token，历史调用重放为 0，并通过独立 grader。
 - 构建带评测门禁的 Self-Harness 闭环，从失败轨迹自动生成并隔离评测候选策略；完成
-  **2 轮、7 个 live-model candidate gates**，通过外部配对实验确认执行步骤降低
-  **6.94%**，并自动拒绝 Pass Rate 证据不足或 Token/Cost 回退的候选版本。
+  **3 轮无人干预搜索、6 个 live-model candidate gates、2 次自动轮次切换**，晋升
+  1 个候选并拒绝 5 个；通过外部配对实验确认执行步骤降低 **6.94%**。
 - 在冻结的 Terminal-Bench 2.0 holdout 上完成 8 题 × 2 次独立评测，取得
   **11/16（68.75%，Wilson 95% CI 44.4%–85.8%）**，0 次基础设施错误；搭建可复现
   scorecard，显式区分外部能力、效率、恢复机制与评测成本。
