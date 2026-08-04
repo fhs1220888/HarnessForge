@@ -1,8 +1,8 @@
 # HarnessForge Benchmark：面向招聘的证据说明
 
-> 一句话定位：HarnessForge 不是“再套一层 prompt”的 Agent Demo，而是一套面向
-> Coding Agent 的可靠性运行与评测 Harness——用预算控制、强制验证、可恢复执行和
-> 同前缀对照实验，降低长任务中的不稳定性，并且只发布能由原始结果复现的指标。
+> 一句话定位：HarnessForge 是一套带统计评测门禁的 Self-Harness——从 Coding Agent
+> 轨迹中自动挖掘失败模式、生成声明式 Harness 候选，通过隔离的 Before/After 配对
+> 实验决定晋升或拒绝，同时提供预算控制、可恢复执行与同前缀对照评测。
 
 ![HarnessForge benchmark evidence](figures/industrial/15-readme-hero.png)
 
@@ -61,6 +61,31 @@ best-sample selection，所以最终报告固定为全部 16 次的 11/16。
    目标指标、回归指标和置信区间门禁；一个观察到 4/5 对 3/5 的候选仍因区间不确定、
    token +6.64%、成本 +6.97% 而被拒绝。
 
+## Self-Harness：项目的核心卖点
+
+项目已经真实执行过两轮候选搜索，共完成 7 个 live-model candidate gates：第一轮
+4 个候选全部拒绝；第二轮 3 个候选中 1 个通过小型 target/regression gate、2 个被
+拒绝，但第二轮最终全套评测因运行中断没有完成。因此目前可以证明多轮搜索、候选
+隔离、自动门禁和跨轮失败记忆已经工作，不能声称多轮 Pass Rate 持续提升。
+
+当前确认的 Self-Improvement 是效率维度：Terminal-Bench 外部配对实验将执行步骤
+显著降低 **6.94%**，95% 区间不跨 0；同一批实验的 Pass Rate 点估计为 +6.67 个
+百分点，但区间跨 0，因此总体质量提升仍未确认。
+
+Campaign 现在使用隔离 Harness revision，并在每轮后原子写入协议、轮次、自动转移、
+Pass Rate 轨迹和晋升记录。`--resume` 会拒绝协议漂移；若单轮已经完整落盘但进程来不及
+更新总报告，会校验 Harness version 后直接恢复该轮，避免重复 API 消耗；真正未完成的
+轮次才会归档并从最后完成的父 revision 继续。
+
+最终因果 A/B 由 `selfharness.proof` 审计，而不是手工相减两个百分比：模型、任务集、
+任务内容 hash、容器镜像、Terminal-Bench revision、步数/Token/成本预算和重复次数任一
+不一致都会拒绝出报告。只有完成至少 3 轮的 campaign、round-0/final Harness lineage
+一致、20+ 冻结题 × 每臂 2+ 次，且配对 Pass Rate 95% 区间下界大于 0，机器 scorecard
+才会把“多轮无人干预提升总体 Pass Rate”改为 confirmed。
+
+机器证据：[Self-Harness scorecard](data/selfharness_scorecard.json)；完整因果证明协议：
+[Self-Harness evidence](SELF_HARNESS_EVIDENCE.md)。
+
 ## 简历可直接使用
 
 推荐选下面 2 条，不要全部堆上去：
@@ -68,6 +93,9 @@ best-sample selection，所以最终报告固定为全部 16 次的 11/16。
 - 设计并实现可恢复、可分叉的 Coding Agent Harness，将对话状态、工作区快照和
   token/cost ledger 在 turn boundary 原子提交；受控进程崩溃后复用 2 次调用、
   2,845 个已付费 token，历史调用重放为 0，并通过独立 grader。
+- 构建带评测门禁的 Self-Harness 闭环，从失败轨迹自动生成并隔离评测候选策略；完成
+  **2 轮、7 个 live-model candidate gates**，通过外部配对实验确认执行步骤降低
+  **6.94%**，并自动拒绝 Pass Rate 证据不足或 Token/Cost 回退的候选版本。
 - 在冻结的 Terminal-Bench 2.0 holdout 上完成 8 题 × 2 次独立评测，取得
   **11/16（68.75%，Wilson 95% CI 44.4%–85.8%）**，0 次基础设施错误；搭建可复现
   scorecard，显式区分外部能力、效率、恢复机制与评测成本。

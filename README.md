@@ -1,6 +1,6 @@
 # HarnessForge
 
-**A durable, forkable, self-evolving coding-agent harness.** HarnessForge runs
+**An evidence-gated self-improving coding-agent harness.** HarnessForge runs
 coding agents under explicit step/token/cost budgets, commits model and workspace
 state at turn boundaries, resumes or forks exact prefixes, and measures harness
 changes behind an independent regression gate.
@@ -22,6 +22,9 @@ recovery, and feedback loops — not prompt tricks.
 - **Measured self-improvement:** trace mining proposes declarative harness changes;
   immutable sibling candidates face paired target/regression evaluation before one
   winner can be promoted.
+- **Crash-safe autonomous search:** multi-round campaigns use isolated Harness
+  revisions, persist a protocol-locked audit after every round, remember rejected
+  candidates, and resume without silently repeating completed search rounds.
 - **Budget-pressure control:** cumulative token pressure collapses complete old
   tool-use/result turns into a bounded deterministic ledger while recent evidence
   stays verbatim, preventing a moderate context from bankrupting a long episode.
@@ -33,6 +36,7 @@ recovery, and feedback loops — not prompt tricks.
 |---|---:|---|
 | Terminal-Bench 2.0 holdout-v1 | **11/16 = 68.75%**, CI [44.4%, 85.8%] | 8 metadata-pinned unseen tasks × 2; Sonnet 5 + verifier; 0 infra errors |
 | Terminal-Bench 2.0 development subset | **19/40 = 47.5%**, CI [32.9%, 62.5%] | 20 pinned tasks × 2; Haiku 4.5 baseline; 0 infra errors |
+| Self-Harness search | **2 rounds / 7 candidate gates** | 1 small-gate acceptance, 6 rejections; second-round final suite incomplete |
 | selfverify intervention | **−6.9% steps**, 95% CI [−13.3%, −1.6%] | paired aggregate experiment |
 | same-prefix candidate screening | **−28.9% tokens/cost**, paired CI excludes 0 | 5-task mechanism benchmark |
 | controlled process crash | **2,845 paid tokens restored**, grader 2/2 | one-task recovery drill |
@@ -45,6 +49,9 @@ golden test rather than maintained as an unverified marketing table.
 For domestic recruiting and interview wording, use the
 [Chinese benchmark brief](docs/BENCHMARK_ZH.md), which separates measured results,
 mechanism telemetry, and the unscored forecast.
+The dedicated [Self-Harness evidence card](docs/SELF_HARNESS_EVIDENCE.md) separates
+closed-loop execution, confirmed efficiency improvement, unattended campaign evidence,
+and the still-unconfirmed causal Pass Rate claim.
 
 ## Architecture
 
@@ -280,7 +287,12 @@ The self-harness loop is a real search, not a single shot: it generates several
 candidate diffs per failure pattern, materializes every sibling from the same immutable
 parent harness, promotes only the best per pattern, and remembers rejected attempts
 across rounds so they aren't re-proposed (`selfharness/search.py`,
-`--rounds N` for a multi-round campaign).
+`--rounds N` for a multi-round campaign). Campaigns execute on isolated revisions and
+atomically persist `running` / `interrupted` / `completed` evidence after each round;
+`--resume` verifies the frozen protocol and recovers a fully committed round without
+repeating its model calls. A strict final-comparison wrapper rejects protocol drift
+before allowing the claim card to mark a Pass Rate uplift as causal. Current evidence
+confirms a 6.94% step-efficiency gain, not an overall Pass Rate uplift.
 
 ## Quickstart
 
@@ -305,6 +317,23 @@ python -m harnessforge.eval.holdout_scorecard runs/holdout_a runs/holdout_b --ou
 # one self-harness iteration
 python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
     --regression-tasks t01_fix_off_by_one t05_fix_regex --repeats 3
+
+# audited autonomous campaign; add --resume after an infrastructure interruption
+python -m harnessforge.selfharness.round --tasks tasks --out runs/campaign-v2 \
+    --regression-tasks t01_fix_off_by_one t05_fix_regex t09_fix_infinite_loop \
+    --rounds 3 --repeats 3
+
+# after matched round-0/final holdout runs, audit protocol equality + causal interval
+python -m harnessforge.selfharness.proof \
+    --control runs/final-ab/control-r1 runs/final-ab/control-r2 \
+    --treatment runs/final-ab/treatment-r1 runs/final-ab/treatment-r2 \
+    --minimum-tasks 20 --minimum-repeats 2 \
+    --out runs/final-ab/causal_proof.json
+
+# regenerate the machine-checked Self-Harness claim card
+python -m harnessforge.selfharness.evidence \
+    --campaign-report runs/campaign-v2/campaign_report.json \
+    --causal-proof runs/final-ab/causal_proof.json
 ```
 
 Before tagging a release, run `make release-check`; the same offline demo is also a

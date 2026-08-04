@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "scorecard": "HarnessForge self-harness evidence",
+  "positioning": "Evidence-gated self-improving coding-agent harness: trace mining -> candidate generation -> isolated paired evaluation -> promotion or rejection.",
+  "closed_loop_execution": {
+    "search_rounds_with_candidate_evidence": 2,
+    "candidates_evaluated": 7,
+    "small_gate_acceptances": 1,
+    "rejections": 6,
+    "completed_full_suite_rounds": 1,
+    "observed_round1_pass_rate": {
+      "baseline": 0.667,
+      "final": 0.639,
+      "winners": 0
+    },
+    "evidence_grade": "live-model-multi-round-candidate-gating-partial"
+  },
+  "confirmed_self_improvement": {
+    "metric": "steps_per_run",
+    "benchmark": "Terminal-Bench 2.0 high-signal paired subset",
+    "tasks": 10,
+    "mean_step_delta": -1.7333,
+    "step_delta_ci95": [
+      -3.3333,
+      -0.4
+    ],
+    "percent_change": -6.94,
+    "confirmed": true,
+    "pass_rate_delta_same_runs": {
+      "mean_delta": 0.0667,
+      "ci_low": -0.1,
+      "ci_high": 0.2667,
+      "n_tasks": 10
+    },
+    "pass_rate_improvement_confirmed": false,
+    "decision": "Efficiency improved with a confidence interval excluding zero; pass-rate improvement remains unconfirmed.",
+    "evidence_grade": "external-benchmark-paired"
+  },
+  "noise_rejection_evidence": {
+    "earlier_false_positive": {
+      "predicted_pass_rate_delta": 0.08,
+      "small_validation_delta": 1.0,
+      "controlled_delta": 0.0,
+      "final_decision": "reverted"
+    },
+    "same_prefix_candidate": {
+      "observed_control_pass_rate": 0.6,
+      "observed_treatment_pass_rate": 0.8,
+      "paired_pass_rate_delta": {
+        "mean_delta": 0.2,
+        "ci_low": -0.4,
+        "ci_high": 0.8,
+        "n_tasks": 5
+      },
+      "token_change_percent": 6.64,
+      "cost_change_percent": 6.97,
+      "decision": "reject"
+    },
+    "evidence_grade": "controlled-gate-behavior"
+  },
+  "claim_status": {
+    "self_harness_improves_overall_pass_rate": {
+      "confirmed": false,
+      "reason": "requires a completed multi-round campaign plus a matched round-0/final comparison with sufficient sample and CI lower bound > 0"
+    },
+    "multi_round_unattended_execution": {
+      "confirmed": false,
+      "reason": "no completed audited campaign with at least two automatic round transitions"
+    },
+    "multi_round_unattended_improvement": {
+      "confirmed": false,
+      "reason": "campaign completion proves autonomous execution; a matched final control/treatment holdout is still required to prove improvement"
+    },
+    "holdout_68_75_is_causal_uplift": {
+      "confirmed": false,
+      "observed_result": {
+        "passes": 11,
+        "runs": 16,
+        "pass_rate": 0.6875
+      },
+      "reason": "development baseline and holdout use different models, tasks, budgets, and harness revisions"
+    }
+  },
+  "causal_proof_protocol": {
+    "campaign": {
+      "minimum_rounds": 3,
+      "automatic_transitions_required": 2,
+      "repository_harness_isolated": true,
+      "persistent_report_after_each_round": true,
+      "resume_must_preserve_protocol": true
+    },
+    "final_comparison": {
+      "immutable_control": "round-0 parent harness",
+      "treatment": "final promoted campaign harness",
+      "same_model_tasks_budgets_and_repeats": true,
+      "minimum_disjoint_holdout_tasks": 20,
+      "minimum_repeats_per_arm": 2,
+      "primary_metric": "paired task-level pass-rate delta",
+      "success_rule": "95% interval lower bound > 0; no regression gate breach"
+    }
+  },
+  "causal_proof_evidence": {
+    "provided": false,
+    "causal_gate_passed": false,
+    "campaign_lineage_match": false
+  },
+  "resume_safe_claims": [
+    "Built and executed a two-round candidate search with seven live-model gates.",
+    "Confirmed a 6.94% step reduction on an external paired benchmark.",
+    "Rejected attractive small-sample gains when uncertainty or cost regressed."
+  ],
+  "forbidden_until_new_live_evidence": [
+    "Self-harness significantly improves overall pass rate.",
+    "Self-harness continuously improves for multiple unattended rounds.",
+    "The 68.75% holdout result is a causal uplift over the development baseline."
+  ]
+}
