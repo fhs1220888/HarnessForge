@@ -46,8 +46,9 @@ estimates. See [EXPERIMENTS.md](EXPERIMENTS.md) for statistical and tooling cave
 The denominator-checked four-axis view is in [BENCHMARK.md](BENCHMARK.md); its
 [machine-readable scorecard](docs/data/benchmark_scorecard.json) is reproduced by a
 golden test rather than maintained as an unverified marketing table.
-For domestic recruiting and interview wording, use the
-[Chinese benchmark brief](docs/BENCHMARK_ZH.md), which separates measured results,
+For domestic recruiting and interview wording, start with the
+[Chinese application and interview brief](docs/PROJECT_BRIEF_ZH.md); the longer
+[Chinese benchmark brief](docs/BENCHMARK_ZH.md) separates measured results,
 mechanism telemetry, and the unscored forecast.
 The dedicated [Self-Harness evidence card](docs/SELF_HARNESS_EVIDENCE.md) separates
 closed-loop execution, confirmed efficiency improvement, unattended campaign evidence,
@@ -203,6 +204,7 @@ tasks/                   18 native tasks (bidirectionally verified)
 scripts/                 figure generation, TB image pre-pull
 docs/                    figures, data snapshots, dashboard
   ARCHITECTURE.md        checkpoint, recovery, fork, and promotion invariants
+  PROJECT_BRIEF_ZH.md    Chinese resume and interview evidence card
   BENCHMARK_ZH.md        Chinese recruiter brief, resume bullets, and benchmark Q&A
   RESUME_BULLETS.md      evidence-backed portfolio wording
 EXPERIMENTS.md           full experiment log + calibration table

@@ -4,6 +4,9 @@
 > 轨迹中自动挖掘失败模式、生成声明式 Harness 候选，通过隔离的 Before/After 配对
 > 实验决定晋升或拒绝，同时提供预算控制、可恢复执行与同前缀对照评测。
 
+投递和面试时优先使用更紧凑的
+[国内岗位项目证据卡](PROJECT_BRIEF_ZH.md)，本页保留完整 benchmark 口径。
+
 ![HarnessForge benchmark evidence](figures/industrial/15-readme-hero.png)
 
 ## 30 秒版本
@@ -76,7 +79,10 @@ Harness 在后两轮仍有明显波动，因此不能把逐轮点估计包装成
 Campaign 现在使用隔离 Harness revision，并在每轮后原子写入协议、轮次、自动转移、
 Pass Rate 轨迹和晋升记录。`--resume` 会拒绝协议漂移；若单轮已经完整落盘但进程来不及
 更新总报告，会校验 Harness version 后直接恢复该轮，避免重复 API 消耗；真正未完成的
-轮次才会归档并从最后完成的父 revision 继续。
+轮次才会归档并从最后完成的父 revision 继续。每轮 proposal 基于当前隔离 Harness
+revision 生成，避免第二、三轮仍对旧仓库版本提 diff。新 Campaign 还分别持久化 agent
+与 miner/proposer 的 calls、tokens、USD，并支持 `--max-campaign-cost-usd` 阶段边界
+熔断；历史 Campaign 的 `$6.1404` 仅是 agent task-run 成本，meta 成本未记录。
 
 最终因果 A/B 由 `selfharness.proof` 审计，而不是手工相减两个百分比：模型、任务集、
 任务内容 hash、容器镜像、Terminal-Bench revision、步数/Token/成本预算和重复次数任一

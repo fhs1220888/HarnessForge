@@ -2,8 +2,9 @@
 
 Use two bullets, not all of them. The numbers below are backed by checked-in
 evidence snapshots; keep the scope qualifiers when discussing them. For Chinese
-applications, see the ready-to-use wording in
-[`BENCHMARK_ZH.md`](BENCHMARK_ZH.md#简历可直接使用).
+applications, use the application/interview brief
+[`PROJECT_BRIEF_ZH.md`](PROJECT_BRIEF_ZH.md#简历可直接使用); the longer benchmark
+methodology remains in [`BENCHMARK_ZH.md`](BENCHMARK_ZH.md#简历可直接使用).
 
 ## Recommended English bullets
 
@@ -62,5 +63,6 @@ episodes can be resumed or forked from an exact committed model/workspace state.
 - Completed campaign scorecard: `docs/data/selfharness_campaign_v2_scorecard.json`
 - Self-Harness causal proof protocol: `docs/SELF_HARNESS_EVIDENCE.md`
 - Chinese recruiter/interview package: `docs/BENCHMARK_ZH.md`
+- Chinese application and interview brief: `docs/PROJECT_BRIEF_ZH.md`
 - Rejected candidate gate case: `docs/data/verification_candidate_comparison.json`
 - Aggregate experiments and caveats: `EXPERIMENTS.md`
