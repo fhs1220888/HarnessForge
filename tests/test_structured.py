@@ -22,6 +22,9 @@ class FakeLLM:
 
         class R:
             text = self.texts.pop(0)
+            tokens_in = 10
+            tokens_out = 5
+            cost_usd = 0.01
 
         return R()
 
@@ -68,6 +71,7 @@ async def test_malformed_then_repaired():
     res = await complete_json_array(llm, system="s", prompt="p")
     assert res.ok and res.llm_calls == 2 and res.repaired
     assert len(res.errors) == 1 and "does not parse" in res.errors[0]
+    assert (res.tokens_in, res.tokens_out, res.cost_usd) == (20, 10, 0.02)
     # The repair turn carried the model's own bad output + the exact error.
     repair_msgs = llm.calls[1]
     assert repair_msgs[1]["role"] == "assistant" and repair_msgs[1]["content"] == BAD_JSON

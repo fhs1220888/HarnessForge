@@ -222,3 +222,68 @@ async def test_resume_recovers_a_committed_round_without_repeating_api_work(
     assert state["resume_count"] == 1
     assert state["recovered_completed_rounds"] == 1
     assert not (campaign / "round2-interrupted").exists()
+
+
+@pytest.mark.asyncio
+async def test_campaign_budget_stops_before_next_round_and_can_resume_with_higher_ceiling(
+    tmp_path, monkeypatch
+):
+    live = _copy_harness(tmp_path / "live")
+
+    async def metered_round(*_args, out_dir=None, memory=None, harness_dir=None, **_kwargs):
+        actual_out = Path(_args[1]) if out_dir is None else Path(out_dir)
+        report = _complete_fake_round(actual_out, memory, Path(harness_dir))
+        (actual_out / "meta_usage.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "total": {
+                    "model_calls": 1,
+                    "tokens_in": 100,
+                    "tokens_out": 20,
+                    "cost_usd": 1.0,
+                },
+            }),
+            encoding="utf-8",
+        )
+        return report
+
+    monkeypatch.setattr(round_mod, "HARNESS_DIR", live)
+    monkeypatch.setattr(round_mod, "run_round", metered_round)
+    campaign = tmp_path / "campaign"
+
+    with pytest.raises(round_mod.CampaignBudgetExceeded, match="before campaign round 2"):
+        await round_mod.run_campaign(
+            tmp_path / "tasks",
+            campaign,
+            None,
+            regression_tasks=["guard"],
+            n_rounds=2,
+            repeats=2,
+            sandbox_kind="local",
+            max_campaign_cost_usd=1.0,
+        )
+
+    stopped = json.loads((campaign / "campaign_report.json").read_text())
+    assert stopped["status"] == "budget_exhausted"
+    assert stopped["rounds_completed"] == 1
+    assert stopped["budget"]["observed"]["total"]["cost_usd"] == 1.0
+    assert stopped["budget"]["remaining_usd"] == 0.0
+
+    reports = await round_mod.run_campaign(
+        tmp_path / "tasks",
+        campaign,
+        None,
+        regression_tasks=["guard"],
+        n_rounds=2,
+        repeats=2,
+        sandbox_kind="local",
+        resume=True,
+        max_campaign_cost_usd=2.1,
+    )
+
+    completed = json.loads((campaign / "campaign_report.json").read_text())
+    assert len(reports) == 2
+    assert completed["status"] == "completed"
+    assert completed["resume_count"] == 1
+    assert completed["budget"]["observed"]["total"]["cost_usd"] == 2.0
+    assert completed["budget"]["remaining_usd"] == 0.1

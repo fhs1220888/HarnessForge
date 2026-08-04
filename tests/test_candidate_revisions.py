@@ -103,10 +103,14 @@ async def test_round_promotes_only_best_sibling_from_shared_parent(tmp_path, mon
             patterns=[],
         )
 
-    async def fake_generate(*_args, **_kwargs):
+    proposal_harnesses = []
+
+    async def fake_generate(*_args, **kwargs):
+        proposal_harnesses.append(Path(kwargs["harness_dir"]))
         return proposals
 
     observed_parent_versions = []
+    budget_stages = []
 
     async def fake_validate(proposal, *_args, base_harness_dir, **_kwargs):
         observed_parent_versions.append(HarnessConfig.load(base_harness_dir).version)
@@ -137,11 +141,20 @@ async def test_round_promotes_only_best_sibling_from_shared_parent(tmp_path, mon
         regression_tasks=["guard"],
         repeats=1,
         sandbox_kind="local",
+        budget_check=budget_stages.append,
     )
 
     assert observed_parent_versions == [
         baseline_summary["harness_version"],
         baseline_summary["harness_version"],
+    ]
+    assert proposal_harnesses == [live]
+    assert budget_stages == [
+        "after baseline evaluation",
+        "after weakness mining",
+        "after proposal generation",
+        "after candidate validation weaker",
+        "after candidate validation winner",
     ]
     final_prompt = (live / "system_prompt.md").read_text(encoding="utf-8")
     assert final_prompt.endswith("Winner rule.\n")

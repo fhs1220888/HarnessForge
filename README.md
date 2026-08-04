@@ -290,7 +290,10 @@ across rounds so they aren't re-proposed (`selfharness/search.py`,
 `--rounds N` for a multi-round campaign). Campaigns execute on isolated revisions and
 atomically persist `running` / `interrupted` / `completed` evidence after each round;
 `--resume` verifies the frozen protocol and recovers a fully committed round without
-repeating its model calls. A strict final-comparison wrapper rejects protocol drift
+repeating its model calls. Agent traces and miner/proposer calls feed separate durable
+usage ledgers, then roll up into an exact campaign total. `--max-campaign-cost-usd`
+adds a stage-boundary spend ceiling and a `budget_exhausted` state that can be resumed
+with a higher ceiling. A strict final-comparison wrapper rejects protocol drift
 before allowing the claim card to mark a Pass Rate uplift as causal. Current evidence
 confirms a 6.94% step-efficiency gain, not an overall Pass Rate uplift.
 
@@ -321,7 +324,7 @@ python -m harnessforge.selfharness.round --tasks tasks --out runs/round1 \
 # audited autonomous campaign; add --resume after an infrastructure interruption
 python -m harnessforge.selfharness.round --tasks tasks --out runs/campaign-v2 \
     --regression-tasks t01_fix_off_by_one t05_fix_regex t09_fix_infinite_loop \
-    --rounds 3 --repeats 3
+    --rounds 3 --repeats 3 --max-campaign-cost-usd 20
 
 # after matched round-0/final holdout runs, audit protocol equality + causal interval
 python -m harnessforge.selfharness.proof \

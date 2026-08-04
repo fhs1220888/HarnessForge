@@ -90,3 +90,9 @@ class MiningReport(BaseModel):
     harness_version: str
     n_failed_runs: int
     patterns: list[FailurePattern] = Field(default_factory=list)
+    # Defaults preserve compatibility with reports created before meta-layer
+    # calls were included in the campaign cost ledger.
+    llm_calls: int = 0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost_usd: float = 0.0

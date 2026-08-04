@@ -34,6 +34,9 @@ exactly the problems listed above and changing nothing else.
 class StructuredResult:
     items: list[Any] = field(default_factory=list)
     llm_calls: int = 0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost_usd: float = 0.0
     repaired: bool = False          # a repair round-trip happened and succeeded
     errors: list[str] = field(default_factory=list)  # one entry per failed attempt
 
@@ -77,6 +80,11 @@ async def complete_json_array(
         final = attempt == repair_attempts
         resp = await llm.complete(system=system, messages=messages, max_tokens=max_tokens)
         result.llm_calls += 1
+        result.tokens_in += int(getattr(resp, "tokens_in", 0))
+        result.tokens_out += int(getattr(resp, "tokens_out", 0))
+        result.cost_usd = round(
+            result.cost_usd + float(getattr(resp, "cost_usd", 0.0)), 6
+        )
 
         try:
             raw_items = extract_json_array(resp.text)

@@ -99,6 +99,10 @@ async def mine(run_dir: Path) -> MiningReport:
                 **{**item, "frequency": len(item.get("evidence_runs", []))}),
         )
         report.patterns.extend(res.items)
+        report.llm_calls += res.llm_calls
+        report.tokens_in += res.tokens_in
+        report.tokens_out += res.tokens_out
+        report.cost_usd = round(report.cost_usd + res.cost_usd, 6)
         if res.repaired:
             print(f"[mining] cluster {exit_reason}: malformed output repaired "
                   f"({res.llm_calls} calls; first error: {res.errors[0]})")

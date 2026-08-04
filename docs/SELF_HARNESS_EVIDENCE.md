@@ -67,24 +67,32 @@ search and the interval lower bound is not above zero.
 ## Crash-safe autonomous campaign
 
 `selfharness.round --rounds N` now executes against isolated campaign-local Harness
-revisions instead of mutating the repository Harness during search. It atomically
-writes `campaign_report.json` after every completed round.
+revisions instead of mutating the repository Harness during search. Proposal diffs are
+generated against that round's current isolated revision, not the repository parent.
+It atomically writes `campaign_report.json` after every completed round.
 
 The report records:
 
 - frozen protocol and initial baseline;
-- running, interrupted, or completed status;
+- running, interrupted, budget-exhausted, or completed status;
 - completed rounds and current round;
 - automatic transitions between rounds;
 - pass-rate trajectory;
 - per-round reports and resume count;
 - number of fully committed rounds recovered after a hard process loss;
 - confirmation that the repository Harness was not mutated.
+- exact agent/meta/total calls, tokens, and USD spend for newly run campaigns;
+- configured campaign ceiling, observed spend, and remaining budget.
 
 If the process exits during a round, the report remains valid. `--resume` refuses
 protocol drift. A fully committed but not yet campaign-indexed round is recovered
 after checking its Harness version, avoiding duplicate model spend; a partial round is
-archived before the last completed parent revision is restored.
+archived before the last completed parent revision is restored. Archived partial-run
+usage remains in the campaign total because it was real billed work. The budget guard
+runs between evaluation stages: a stage already in flight can finish and slightly
+overshoot, but no later stage starts after the ceiling is observed. The ceiling is an
+operational control rather than part of the evaluation protocol, so a
+`budget_exhausted` campaign can resume with a higher ceiling.
 
 Example:
 
@@ -94,7 +102,8 @@ python -m harnessforge.selfharness.round \
   --out runs/selfharness-causal-campaign \
   --baseline runs/frozen-round0-baseline \
   --regression-tasks t01_fix_off_by_one t05_fix_regex t09_fix_infinite_loop \
-  --rounds 3 --repeats 3 --candidates-per-pattern 3 --sandbox local
+  --rounds 3 --repeats 3 --candidates-per-pattern 3 --sandbox local \
+  --max-campaign-cost-usd 20
 
 # Same protocol after an infrastructure interruption:
 python -m harnessforge.selfharness.round \
@@ -102,8 +111,14 @@ python -m harnessforge.selfharness.round \
   --out runs/selfharness-causal-campaign \
   --baseline runs/frozen-round0-baseline \
   --regression-tasks t01_fix_off_by_one t05_fix_regex t09_fix_infinite_loop \
-  --rounds 3 --repeats 3 --candidates-per-pattern 3 --sandbox local --resume
+  --rounds 3 --repeats 3 --candidates-per-pattern 3 --sandbox local --resume \
+  --max-campaign-cost-usd 25
 ```
+
+The checked-in 2026-08 campaign predates meta-layer metering, so its published
+`$6.1404` is explicitly agent-task spend only. Do not retroactively label it a total.
+New campaigns write `meta_usage.json` per round and expose the combined amount under
+`campaign_report.json -> budget.observed.total`.
 
 Completing three rounds proves that the search/gate loop operated autonomously across
 at least two round transitions. It does **not by itself** prove that pass rate improved.

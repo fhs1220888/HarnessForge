@@ -13,12 +13,14 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from typing import Any, Callable
 
 import yaml
 
 from ..config import EVOLVABLE_COMPONENTS, HARNESS_DIR
 from .schema import MiningReport, Proposal, ProposalMemory
 from .structured import complete_json_array
+from .usage import add_usage
 
 PROPOSAL_PROMPT = """\
 You are improving a coding-agent harness. Its evolvable components are:
@@ -88,7 +90,9 @@ def sanity_check(proposal: Proposal, harness_dir: Path = HARNESS_DIR) -> str | N
 
 async def generate(report: MiningReport, max_proposals: int = 6,
                    harness_dir: Path = HARNESS_DIR, candidates_per_pattern: int = 3,
-                   memory: ProposalMemory | None = None) -> list[Proposal]:
+                   memory: ProposalMemory | None = None,
+                   usage_sink: dict[str, Any] | None = None,
+                   usage_callback: Callable[[], None] | None = None) -> list[Proposal]:
     """Generate multiple distinct candidate diffs per failure pattern.
 
     Candidates targeting the same pattern share `candidate_group = pattern_id`, so
@@ -130,6 +134,15 @@ async def generate(report: MiningReport, max_proposals: int = 6,
                 **item,
             ),
         )
+        if usage_sink is not None:
+            add_usage(usage_sink, {
+                "model_calls": res.llm_calls,
+                "tokens_in": res.tokens_in,
+                "tokens_out": res.tokens_out,
+                "cost_usd": res.cost_usd,
+            })
+            if usage_callback is not None:
+                usage_callback()
         if res.repaired:
             print(f"[proposal] pattern {pattern.pattern_id}: malformed output repaired "
                   f"({res.llm_calls} calls)")

@@ -26,7 +26,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..config import HARNESS_DIR, HarnessConfig
 from ..eval.counterfactual import _write_json_atomic
@@ -35,7 +35,18 @@ from .mining import mine
 from .proposal import generate
 from .schema import ProposalMemory
 from .search import record_losers, select_best_per_group
+from .usage import (
+    campaign_usage,
+    combine_usage,
+    empty_usage,
+    normalized_usage,
+    trace_usage,
+)
 from .validation import promote_proposal, validate
+
+
+class CampaignBudgetExceeded(RuntimeError):
+    """Raised at a safe stage boundary after the campaign ceiling is reached."""
 
 
 async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
@@ -43,7 +54,8 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
                     max_proposals: int = 6, sandbox_kind: str = "docker",
                     candidates_per_pattern: int = 3,
                     memory: ProposalMemory | None = None,
-                    harness_dir: Path | None = None) -> dict:
+                    harness_dir: Path | None = None,
+                    budget_check: Callable[[str], None] | None = None) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     memory = memory or ProposalMemory()
     harness_dir = Path(harness_dir or HARNESS_DIR)
@@ -61,9 +73,12 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
         )
     baseline_summary = json.loads((baseline_dir / "summary.json").read_text(encoding="utf-8"))
     print(f"[round] baseline pass_rate={baseline_summary['pass_rate']}")
+    if budget_check:
+        budget_check("after baseline evaluation")
 
     # 2. Weakness mining (cached if already present).
-    if not (baseline_dir / "mining_report.json").exists():
+    mining_cached = (baseline_dir / "mining_report.json").exists()
+    if not mining_cached:
         print("[round] mining weaknesses...")
         report = await mine(baseline_dir)
     else:
@@ -72,9 +87,38 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
             (baseline_dir / "mining_report.json").read_text(encoding="utf-8"))
     print(f"[round] {len(report.patterns)} failure patterns")
 
+    # A cached mining report represents spend from before this round (possibly
+    # an archived interrupted attempt), so only newly mined usage enters this
+    # round-local ledger. Archived ledgers remain part of campaign_usage().
+    mining_usage = normalized_usage({
+        "llm_calls": report.llm_calls,
+        "tokens_in": report.tokens_in,
+        "tokens_out": report.tokens_out,
+        "cost_usd": report.cost_usd,
+    } if not mining_cached else None)
+    proposal_usage = empty_usage()
+
+    def write_meta_usage() -> None:
+        _write_json_atomic(out_dir / "meta_usage.json", {
+            "schema_version": 1,
+            "mining": mining_usage,
+            "proposal": proposal_usage,
+            "total": combine_usage(mining_usage, proposal_usage),
+        })
+
+    write_meta_usage()
+    if budget_check:
+        budget_check("after weakness mining")
+
     # 3. Proposals: multiple candidates per pattern, memory-aware, most promising first.
     proposals = await generate(report, max_proposals=max_proposals,
-                               candidates_per_pattern=candidates_per_pattern, memory=memory)
+                               harness_dir=harness_dir,
+                               candidates_per_pattern=candidates_per_pattern, memory=memory,
+                               usage_sink=proposal_usage,
+                               usage_callback=write_meta_usage)
+    write_meta_usage()
+    if budget_check:
+        budget_check("after proposal generation")
     proposals.sort(key=lambda p: p.expected_pass_rate_delta, reverse=True)
     print(f"[round] {len(proposals)} candidate proposals pass pre-validation "
           f"({len({p.candidate_group for p in proposals})} patterns)")
@@ -113,6 +157,8 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
             verdicts.append(verdict)
             print(f"[round]   {'eligible' if verdict.accepted else 'reject'}: "
                   f"{prop.validation_notes}")
+            if budget_check:
+                budget_check(f"after candidate validation {prop.proposal_id}")
 
         group_winners, group_losers = select_best_per_group(candidates)
         if group_winners:
@@ -139,6 +185,9 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
     final = await run_suite(tasks_root, out_dir / "final", repeats=repeats,
                             sandbox_kind=sandbox_kind, harness_dir=harness_dir)
 
+    agent_usage = trace_usage(out_dir)
+    meta_total = combine_usage(mining_usage, proposal_usage)
+
     report_out = {
         "baseline": {"pass_rate": baseline_summary["pass_rate"],
                      "cost_usd": baseline_summary["total_cost_usd"],
@@ -159,6 +208,11 @@ async def run_round(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
              "winner": p in winners}
             for p in proposals
         ],
+        "usage": {
+            "agent": agent_usage,
+            "meta": meta_total,
+            "total": combine_usage(agent_usage, meta_total),
+        },
     }
     _write_json_atomic(out_dir / "round_report.json", report_out)
     _write_json_atomic(out_dir / "memory.json", memory.model_dump(mode="json"))
@@ -195,12 +249,20 @@ def _campaign_state(
     resume_count: int,
     recovered_completed_rounds: int,
     current_round: int | None,
+    out_dir: Path,
+    max_campaign_cost_usd: float | None,
     error: str | None = None,
 ) -> dict[str, Any]:
     trajectory = []
     if reports:
         trajectory = [report["baseline"]["pass_rate"] for report in reports]
         trajectory.append(reports[-1]["final"]["pass_rate"])
+    observed = campaign_usage(out_dir)
+    observed_cost = float(observed["total"]["cost_usd"])
+    remaining = (
+        max(0.0, round(max_campaign_cost_usd - observed_cost, 6))
+        if max_campaign_cost_usd is not None else None
+    )
     return {
         "schema_version": 1,
         "experiment": "autonomous_self_harness_campaign",
@@ -214,15 +276,43 @@ def _campaign_state(
         "repository_harness_mutated": False,
         "pass_rate_trajectory": trajectory,
         "round_reports": reports,
+        "budget": {
+            "max_campaign_cost_usd": max_campaign_cost_usd,
+            "observed": observed,
+            "remaining_usd": remaining,
+            "exhausted": (
+                observed_cost >= max_campaign_cost_usd
+                if max_campaign_cost_usd is not None else False
+            ),
+            "enforcement": (
+                "stage-boundary guard; an active evaluation stage may finish "
+                "and overshoot before the next call is blocked"
+            ),
+        },
         "error": error,
     }
+
+
+def _enforce_campaign_budget(
+    out_dir: Path, max_campaign_cost_usd: float | None, stage: str
+) -> None:
+    if max_campaign_cost_usd is None:
+        return
+    observed = campaign_usage(out_dir)
+    cost = float(observed["total"]["cost_usd"])
+    if cost >= max_campaign_cost_usd:
+        raise CampaignBudgetExceeded(
+            f"campaign cost ${cost:.6f} reached ${max_campaign_cost_usd:.6f} "
+            f"ceiling at {stage}"
+        )
 
 
 async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | None,
                        regression_tasks: list[str], n_rounds: int = 3, repeats: int = 3,
                        max_proposals: int = 6, sandbox_kind: str = "docker",
                        candidates_per_pattern: int = 3,
-                       resume: bool = False) -> list[dict]:
+                       resume: bool = False,
+                       max_campaign_cost_usd: float | None = None) -> list[dict]:
     """Run several self-harness rounds. Memory of dead ends persists across rounds;
     each round's merged harness becomes the next round's starting point (its `final`
     eval becomes the next baseline), so improvements compound and mistakes aren't
@@ -230,6 +320,8 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
     out_dir = Path(out_dir)
     if n_rounds <= 0:
         raise ValueError("n_rounds must be positive")
+    if max_campaign_cost_usd is not None and max_campaign_cost_usd <= 0:
+        raise ValueError("max_campaign_cost_usd must be positive")
     out_dir.mkdir(parents=True, exist_ok=True)
     report_path = out_dir / "campaign_report.json"
     protocol = {
@@ -346,6 +438,8 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
             resume_count=resume_count,
             recovered_completed_rounds=recovered_completed_rounds,
             current_round=len(reports) + 1 if len(reports) < n_rounds else None,
+            out_dir=out_dir,
+            max_campaign_cost_usd=max_campaign_cost_usd,
         ),
     )
 
@@ -359,6 +453,8 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
                 resume_count=resume_count,
                 recovered_completed_rounds=recovered_completed_rounds,
                 current_round=None,
+                out_dir=out_dir,
+                max_campaign_cost_usd=max_campaign_cost_usd,
             ),
         )
         trajectory = [r["baseline"]["pass_rate"] for r in reports] + [
@@ -371,6 +467,26 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
         out_dir / f"round{len(reports)}" / "final" if reports else baseline_dir
     )
     for i in range(len(reports) + 1, n_rounds + 1):
+        try:
+            _enforce_campaign_budget(
+                out_dir, max_campaign_cost_usd, f"before campaign round {i}"
+            )
+        except CampaignBudgetExceeded as exc:
+            _write_json_atomic(
+                report_path,
+                _campaign_state(
+                    status="budget_exhausted",
+                    protocol=protocol,
+                    reports=reports,
+                    resume_count=resume_count,
+                    recovered_completed_rounds=recovered_completed_rounds,
+                    current_round=i,
+                    out_dir=out_dir,
+                    max_campaign_cost_usd=max_campaign_cost_usd,
+                    error=f"{type(exc).__name__}: {exc}",
+                ),
+            )
+            raise
         round_dir = out_dir / f"round{i}"
         if round_dir.exists():
             archived_round = _next_archive_path(round_dir)
@@ -394,17 +510,26 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
                 candidates_per_pattern=candidates_per_pattern,
                 memory=memory,
                 harness_dir=working_harness,
+                budget_check=lambda stage: _enforce_campaign_budget(
+                    out_dir, max_campaign_cost_usd, stage
+                ),
             )
         except Exception as exc:
             _write_json_atomic(
                 report_path,
                 _campaign_state(
-                    status="interrupted",
+                    status=(
+                        "budget_exhausted"
+                        if isinstance(exc, CampaignBudgetExceeded)
+                        else "interrupted"
+                    ),
                     protocol=protocol,
                     reports=reports,
                     resume_count=resume_count,
                     recovered_completed_rounds=recovered_completed_rounds,
                     current_round=i,
+                    out_dir=out_dir,
+                    max_campaign_cost_usd=max_campaign_cost_usd,
                     error=f"{type(exc).__name__}: {exc}",
                 ),
             )
@@ -420,6 +545,8 @@ async def run_campaign(tasks_root: Path, out_dir: Path, baseline_dir: Path | Non
                 resume_count=resume_count,
                 recovered_completed_rounds=recovered_completed_rounds,
                 current_round=i + 1 if i < n_rounds else None,
+                out_dir=out_dir,
+                max_campaign_cost_usd=max_campaign_cost_usd,
             ),
         )
     trajectory = [r["baseline"]["pass_rate"] for r in reports] + [
@@ -440,6 +567,10 @@ def main() -> None:
     ap.add_argument("--candidates-per-pattern", type=int, default=3)
     ap.add_argument("--rounds", type=int, default=1, help=">1 runs a multi-round campaign")
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument(
+        "--max-campaign-cost-usd", type=float, default=None,
+        help="stage-boundary spend ceiling for a multi-round campaign",
+    )
     ap.add_argument("--sandbox", choices=["docker", "local"], default="docker")
     args = ap.parse_args()
     if args.rounds > 1:
@@ -447,7 +578,8 @@ def main() -> None:
                                  n_rounds=args.rounds, repeats=args.repeats,
                                  max_proposals=args.max_proposals, sandbox_kind=args.sandbox,
                                  candidates_per_pattern=args.candidates_per_pattern,
-                                 resume=args.resume))
+                                 resume=args.resume,
+                                 max_campaign_cost_usd=args.max_campaign_cost_usd))
     else:
         asyncio.run(run_round(args.tasks, args.out, args.baseline, args.regression_tasks,
                               args.repeats, args.max_proposals, args.sandbox,
