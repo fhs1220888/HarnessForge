@@ -1,0 +1,26 @@
+[
+  {
+    "proposal_id": "prop-0dc1d471",
+    "accepted": false,
+    "targeted_delta": 0.0,
+    "regression_flips": 1,
+    "cost_delta_pct": -5.6,
+    "notes": "reverted"
+  },
+  {
+    "proposal_id": "prop-feadbc93",
+    "accepted": true,
+    "targeted_delta": 0.5,
+    "regression_flips": 0,
+    "cost_delta_pct": 0.0,
+    "notes": "harness_version now 93f167b167a0"
+  },
+  {
+    "proposal_id": "prop-f0231885",
+    "accepted": false,
+    "targeted_delta": 0.0,
+    "regression_flips": 0,
+    "cost_delta_pct": -76.5,
+    "notes": "reverted"
+  }
+]

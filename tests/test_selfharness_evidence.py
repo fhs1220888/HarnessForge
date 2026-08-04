@@ -17,10 +17,10 @@ def _read(path: Path) -> dict | list:
 
 def _build(**overrides):
     inputs = {
-        "round_report": _read(ROOT / "runs/campaign/round1/round_report.json"),
+        "round_report": _read(DATA / "selfharness_round1_report.json"),
         "round_verdicts": [
-            _read(ROOT / "runs/campaign/round1/verdicts.json"),
-            _read(ROOT / "runs/campaign/round2/verdicts.json"),
+            _read(DATA / "selfharness_round1_verdicts.json"),
+            _read(DATA / "selfharness_round2_verdicts.json"),
         ],
         "external_comparison": _read(DATA / "tb_selfverify_comparison.json"),
         "holdout": _read(DATA / "tb_holdout_v1_verifier_scorecard.json"),

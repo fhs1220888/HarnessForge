@@ -1,0 +1,50 @@
+{
+  "baseline": {
+    "pass_rate": 0.667,
+    "cost_usd": 1.25,
+    "harness_version": "f325df98ab59"
+  },
+  "final": {
+    "pass_rate": 0.639,
+    "cost_usd": 0.85,
+    "harness_version": "f325df98ab59"
+  },
+  "n_candidates": 4,
+  "n_patterns": 2,
+  "n_winners": 0,
+  "winners": [],
+  "calibration": [
+    {
+      "proposal_id": "prop-d5c1cac6",
+      "candidate_group": "patch-without-reverification",
+      "predicted_delta": 0.12,
+      "observed_delta": 0.0,
+      "accepted": false,
+      "winner": false
+    },
+    {
+      "proposal_id": "prop-93bc5aae",
+      "candidate_group": "diagnose-without-fix-csv-mismatch",
+      "predicted_delta": 0.08,
+      "observed_delta": 0.0,
+      "accepted": false,
+      "winner": false
+    },
+    {
+      "proposal_id": "prop-63a763a5",
+      "candidate_group": "patch-without-reverification",
+      "predicted_delta": 0.08,
+      "observed_delta": -0.5,
+      "accepted": false,
+      "winner": false
+    },
+    {
+      "proposal_id": "prop-c5e7afdf",
+      "candidate_group": "diagnose-without-fix-csv-mismatch",
+      "predicted_delta": 0.05,
+      "observed_delta": 0.0,
+      "accepted": false,
+      "winner": false
+    }
+  ]
+}

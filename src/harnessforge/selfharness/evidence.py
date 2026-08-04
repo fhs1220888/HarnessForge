@@ -259,15 +259,15 @@ def main() -> None:
     parser.add_argument(
         "--round-report",
         type=Path,
-        default=Path("runs/campaign/round1/round_report.json"),
+        default=Path("docs/data/selfharness_round1_report.json"),
     )
     parser.add_argument(
         "--round-verdicts",
         type=Path,
         nargs="+",
         default=[
-            Path("runs/campaign/round1/verdicts.json"),
-            Path("runs/campaign/round2/verdicts.json"),
+            Path("docs/data/selfharness_round1_verdicts.json"),
+            Path("docs/data/selfharness_round2_verdicts.json"),
         ],
     )
     parser.add_argument(
